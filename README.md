@@ -1,33 +1,34 @@
-# PipelineX
+# DocVault
 
-PipelineX is a secure CI/CD management platform. It runs build and deployment pipelines for registered projects and blocks any release that fails its security policies.
+DocVault is a web application for storing and sharing confidential documents. It is built for a DevSecOps course project: it starts with deliberate security flaws, then is secured across its lifecycle, from source code to runtime monitoring.
 
 The project is in early development. See [docs/DEVELOPMENT_PROGRESS.md](docs/DEVELOPMENT_PROGRESS.md) for its current status.
+
+> Deliberately vulnerable versions of this application must only run locally or in a dedicated test environment.
 
 ## Repository layout
 
 | Path | Contents |
 | --- | --- |
-| `backend/` | FastAPI service, Celery workers and database migrations |
-| `frontend/` | React and TypeScript dashboard |
+| `backend/` | FastAPI application, server-rendered pages and database migrations |
 | `deploy/k8s/` | Kubernetes manifests |
-| `deploy/helm/` | Helm chart for PipelineX |
 | `deploy/kyverno/` | Kyverno admission policies |
-| `samples/` | Applications and scanner reports used for testing and demos |
 | `scripts/ci/` | Scripts shared by CI and local development |
-| `docs/` | Architecture, security and deployment documentation |
-| `.github/workflows/` | CI/CD for PipelineX itself |
+| `docs/` | Threat model, security policy and project records |
+| `.github/workflows/` | CI pipeline |
 
 ## Security checks
 
-Every push to `main` and every pull request runs three scanners. Run the same checks locally with Docker:
+Every push to `main` and every pull request runs the scanners below. Run the same checks locally with Docker:
 
 ```bash
 bash scripts/ci/scan.sh all
 ```
 
-| Scanner | Checks | Fails on |
-| --- | --- | --- |
-| Gitleaks | Working tree and git history | Any detected secret |
-| Semgrep | Source code | Any `ERROR`-severity finding |
-| Trivy | Dependencies | Any `HIGH` or `CRITICAL` vulnerability with a fix available |
+The blocking rules and their justification are in [docs/security-policy.md](docs/security-policy.md).
+
+## Project documents
+
+- [Threat model](docs/threat-model.md)
+- [Security policy](docs/security-policy.md)
+- [AI usage declaration](docs/ai-usage.md)

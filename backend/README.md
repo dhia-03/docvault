@@ -1,3 +1,3 @@
 # Backend
 
-FastAPI service, Celery workers and Alembic migrations. Not implemented yet.
+FastAPI application with server-rendered pages and Alembic migrations. Not implemented yet.

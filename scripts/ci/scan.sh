@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs PipelineX's security scanners from pinned container images.
+# Runs DocVault's security scanners from pinned container images.
 # CI and local runs use this same script, so results match.
 #
 # Usage: scripts/ci/scan.sh [gitleaks|semgrep|trivy|all]
@@ -54,7 +54,7 @@ scan_semgrep() {
 
 scan_trivy() {
   echo "==> Trivy: dependencies"
-  local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/pipelinex/trivy"
+  local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/docvault/trivy"
   mkdir -p "$cache_dir"
   "${RUN[@]}" -v "$cache_dir:/trivy-cache" "$TRIVY_IMAGE" \
     fs \

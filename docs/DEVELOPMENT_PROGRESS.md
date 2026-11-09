@@ -4,20 +4,20 @@ Last updated: 2026-11-09
 
 ## Current status
 
-Step 1 (Foundations) is in progress. The repository layout and security CI exist. No application code has been written.
+The project theme is DocVault, pending validation by the professor. The repository layout, part of the security CI, and draft design documents exist. No application code has been written.
 
 | Step | Status |
 | --- | --- |
-| 1. Foundations | In progress |
-| 2. Risk tests | Not started |
-| 3. Backend core | Not started |
-| 4. First end-to-end path | Not started |
-| 5. Security breadth | Not started |
-| 6. Kubernetes and secrets | Not started |
-| 7. Frontend completion | Not started |
-| 8. Monitoring and incidents | Not started |
-| 9. Vulnerable baseline and proof | Not started |
-| 10. Audit and delivery | Not started |
+| 1. Theme reservation (Annexe A) | Drafted, not submitted |
+| 2. Threat model and blocking policy | Drafted, awaiting review |
+| 3. Vulnerable application, with flaws documented | Not started |
+| 4. Hardened container and five-check CI, with proof that it blocks | In progress: 3 of 5 checks active |
+| 5. Hardened Kubernetes deployment and Kyverno | Not started |
+| 6. Authenticated ZAP in the pipeline | Not started |
+| 7. Fix each flaw and re-test | Not started |
+| 8. Revoke-then-purge demonstration | Not started |
+| 9. Runtime detection and incident response plan | Not started |
+| 10. Report, slides, contribution sheet and AI declaration | AI log started |
 
 ## Completed
 
@@ -31,7 +31,7 @@ Run locally with Docker on 2026-11-09, using `scripts/ci/scan.sh`. The planted p
 | Check | Input | Result |
 | --- | --- | --- |
 | Gitleaks | Planted token in the working tree | Blocked, exit 1 |
-| Gitleaks | Planted token only in git history | Blocked, exit 1 |
+| Gitleaks | Planted token only in Git history | Blocked, exit 1 |
 | Gitleaks | Scan output for a planted token | Token redacted |
 | Semgrep | Flask route with shell command injection | Blocked, 3 findings |
 | Trivy | `pyyaml==5.3` in `requirements.txt` | Blocked, 2 critical CVEs |
@@ -44,12 +44,18 @@ Run locally with Docker on 2026-11-09, using `scripts/ci/scan.sh`. The planted p
 - Trivy has nothing to scan until dependency files exist, so its pass on the current repository proves nothing yet.
 - Semgrep downloads its rule packs at scan time, so those rules are not version-pinned.
 
+## Open questions
+
+- Has DocVault been validated by the professor?
+- The course requires 3 to 4 students. Is a one-person team allowed?
+- What is the submission deadline? The course document has no sections 7 and 8.
+
 ## Security issues
 
 None recorded.
 
 ## Next steps
 
-1. Check the requirements against the professor's PDF.
-2. Write the architecture, database, permissions and threat model documents.
-3. Add linting, tests, image build and Checkov to CI once there is code to run them on.
+1. Review the threat model and security policy.
+2. Build the vulnerable application and document each flaw before fixing it.
+3. Add the image scan and Checkov to CI once there is an image and manifests to scan.
