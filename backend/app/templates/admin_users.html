@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Users - DocVault{% endblock %}
+{% block content %}
+<h1>Users</h1>
+<table>
+  <thead><tr><th>Username</th><th>Role</th></tr></thead>
+  <tbody>
+    {% for account in users %}
+    <tr>
+      <td>{{ account.username }}</td>
+      <td>
+        <form class="row" method="post" action="/admin/users/{{ account.id }}/role">
+          <select name="role" aria-label="Role for {{ account.username }}">
+            {% for role in roles %}
+            <option value="{{ role }}" {% if role == account.role %}selected{% endif %}>{{ role }}</option>
+            {% endfor %}
+          </select>
+          <button>Save</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Create a user</h2>
+<form class="stack" method="post" action="/admin/users">
+  <label>Username <input name="username" required minlength="3" maxlength="64"></label>
+  <label>Password <input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+  <label>Role
+    <select name="role">
+      {% for role in roles %}<option value="{{ role }}">{{ role }}</option>{% endfor %}
+    </select>
+  </label>
+  <button>Create</button>
+</form>
+{% endblock %}

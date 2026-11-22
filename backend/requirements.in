@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg[binary]
+alembic
+jinja2
+python-multipart
+argon2-cffi
+itsdangerous
+# F06: deliberately vulnerable version, see docs/vulnerability-register.md
+pyyaml==5.3
