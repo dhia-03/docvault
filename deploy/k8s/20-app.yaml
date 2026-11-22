@@ -1,0 +1,73 @@
+# DocVault application, mirroring the app service in docker-compose.yml.
+# VULN F07 (Kubernetes half): no securityContext, so the container runs as
+# root, may escalate privileges, keeps default capabilities and has a writable
+# root filesystem. The service account token is also mounted automatically.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: documents
+  namespace: docvault
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docvault
+  namespace: docvault
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: docvault
+  template:
+    metadata:
+      labels:
+        app: docvault
+    spec:
+      containers:
+        - name: app
+          # Built locally and loaded into the cluster; see deploy/README.md.
+          image: docvault-app:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: docvault-secrets
+                  key: POSTGRES_PASSWORD
+            # $(POSTGRES_PASSWORD) is expanded by Kubernetes from the variable above.
+            - name: DATABASE_URL
+              value: postgresql+psycopg://docvault:$(POSTGRES_PASSWORD)@db:5432/docvault
+            - name: SEED_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: docvault-secrets
+                  key: SEED_PASSWORD
+          volumeMounts:
+            # Mounted on the documents directory itself: unlike a Docker named
+            # volume, a new Kubernetes volume is not filled from the image, so
+            # mounting it on /data would hide /data/documents.
+            - name: documents
+              mountPath: /data/documents
+      volumes:
+        - name: documents
+          persistentVolumeClaim:
+            claimName: documents
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docvault
+  namespace: docvault
+spec:
+  selector:
+    app: docvault
+  ports:
+    - port: 8000
+      targetPort: 8000

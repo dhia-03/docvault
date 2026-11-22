@@ -9,8 +9,8 @@ The build fails on any exposed secret and on any high-impact issue that we can a
 | Secret detection, with redaction | Gitleaks | Any finding in the working tree or Git history | One valid credential is enough for a compromise, so severity levels do not apply | Active |
 | Static analysis | Semgrep | Any `ERROR`-severity finding | These rules target directly exploitable classes such as injection. Lower severities produce more false positives, and blocking on them would encourage blanket exceptions | Active |
 | Dependencies | Trivy | `HIGH` or `CRITICAL` with a fix available | These can lead to remote compromise or data loss, and an upgrade path exists. Blocking on unfixable issues would stop delivery with no action available to the developer | Active |
-| Container image | Trivy | `HIGH` or `CRITICAL` with a fix available | Same reasoning as dependencies. It also covers operating-system packages that a dependency scan cannot see | Planned |
-| Deployment files | Checkov | Any failed check on the Dockerfile or Kubernetes manifests | These files are ours and small, and each failure can be fixed by a configuration change without waiting for anyone | Planned |
+| Container image | Trivy | `HIGH` or `CRITICAL` with a fix available | Same reasoning as dependencies. It also covers operating-system packages that a dependency scan cannot see | Active |
+| Deployment files | Checkov | Any failed check on the Dockerfile or Kubernetes manifests | These files are ours and small, and each failure can be fixed by a configuration change without waiting for anyone | Active |
 | Dynamic testing, after deployment | OWASP ZAP | Any `High` risk alert | This covers exploitable behavior on the running application, such as SQL injection. `Medium` alerts are often missing headers and are tracked instead of blocking | Planned |
 
 ## Deliberately vulnerable version
@@ -56,6 +56,8 @@ A passing pipeline does not mean DocVault is secure.
 - The current Semgrep rule packs missed two planted flaws, F03 (XSS) and F04 (path traversal), at every severity.
 - Semgrep's `WARNING` and `INFO` rules are not run in the blocking stage.
 - Semgrep rule packs are downloaded at scan time and are not version-pinned, so results can change between runs.
+- Checkov's "any failed check" threshold includes checks that are good practice rather than security, such as liveness probes. Some will not fit a local cluster: an `Always` pull policy and image digests need a registry. These will be handled through recorded exceptions, not by lowering the threshold.
+- The image scan only covers the application image. The PostgreSQL image is pulled as-is and is not scanned.
 - `--ignore-unfixed` hides vulnerabilities that have no fix yet. A critical issue with no fix does not fail the build.
 - Vulnerability scanners only find publicly known issues.
 - ZAP only tests the pages and inputs it reaches.
