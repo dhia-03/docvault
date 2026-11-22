@@ -11,7 +11,7 @@ The build fails on any exposed secret and on any high-impact issue that we can a
 | Dependencies | Trivy | `HIGH` or `CRITICAL` with a fix available | These can lead to remote compromise or data loss, and an upgrade path exists. Blocking on unfixable issues would stop delivery with no action available to the developer | Active |
 | Container image | Trivy | `HIGH` or `CRITICAL` with a fix available | Same reasoning as dependencies. It also covers operating-system packages that a dependency scan cannot see | Active |
 | Deployment files | Checkov | Any failed check on the Dockerfile or Kubernetes manifests | These files are ours and small, and each failure can be fixed by a configuration change without waiting for anyone | Active |
-| Dynamic testing, after deployment | OWASP ZAP | Any `High` risk alert | This covers exploitable behavior on the running application, such as SQL injection. `Medium` alerts are often missing headers and are tracked instead of blocking | Planned |
+| Dynamic testing, after deployment to a throwaway kind cluster | OWASP ZAP | Any `High` risk alert | This covers exploitable behavior on the running application, such as SQL injection. `Medium` alerts are often missing headers and are tracked instead of blocking | Planned |
 
 ## Deliberately vulnerable version
 
