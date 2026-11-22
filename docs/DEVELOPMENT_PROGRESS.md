@@ -26,7 +26,7 @@ The deliberately vulnerable DocVault application works locally with Docker Compo
 - Vulnerable application with login, three roles, upload, search, sharing, admin pages and an audit log
 - Vulnerability register for F01 to F07
 - Repository made public on 2026-11-22, so that `main` can require the checks (branch protection is not available on private repositories in the free plan)
-- `main` protection: pull request required, all five checks must pass, applies to admins
+- `main` protection: pull request required, all six checks (five static, plus ZAP) must pass, applies to admins
 - `vulnerable-baseline` pushed and tagged `v0-vulnerable`; draft pull request #2 kept open as CI evidence, never to be merged
 - Image scan (Trivy) and deployment-file scan (Checkov) added to CI
 - Baseline Kubernetes manifests in `deploy/k8s/`, including the Kubernetes half of F07
@@ -79,5 +79,4 @@ Seven planted flaws and five unplanned weaknesses are open. See the [vulnerabili
 ## Next steps
 
 1. Screenshot the merge box of pull request #2, showing the merge blocked by the five failing checks.
-2. Make the DAST check required on `main` and keep its report as evidence.
-3. Harden the container and manifests and add Kyverno, then fix each flaw on its own branch.
+2. Harden the container and manifests and add Kyverno, then fix each flaw on its own branch.
