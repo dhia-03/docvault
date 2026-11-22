@@ -51,6 +51,7 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 | Checkov, 2026-11-22 | Blocked: 2 failed checks on the Dockerfile, 39 on the manifests; works with networking disabled |
 | Manifests on a throwaway k3s cluster, 2026-11-22 | Deployed; app pod runs as UID 0; `run_all.py` found 7 of 7 flaws exploitable |
 | actionlint and ShellCheck, 2026-11-22 | No errors |
+| CI run 45071375296 on pull request #2, 2026-11-22 | All five checks failed with the same results as locally; log in `docs/evidence/` |
 
 ## Known limitations
 
@@ -72,6 +73,6 @@ Seven planted flaws and five unplanned weaknesses are open. See the [vulnerabili
 
 ## Next steps
 
-1. Capture the five failing checks on pull request #2, then make the two new checks required on `main`.
+1. Screenshot the merge box of pull request #2, showing the merge blocked by the five failing checks.
 2. Deploy on Minikube, then harden the container and manifests and add Kyverno.
 3. Add an authenticated ZAP scan, then fix each flaw on its own branch.
