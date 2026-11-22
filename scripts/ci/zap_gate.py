@@ -11,6 +11,7 @@ import os
 import sys
 
 RISKS = {"3": "High", "2": "Medium", "1": "Low", "0": "Informational"}
+CONFIDENCE = {"4": "Confirmed", "3": "High", "2": "Medium", "1": "Low", "0": "False positive"}
 
 # ZAP rule IDs mapped to the planted flaws they can reveal.
 # See https://www.zaproxy.org/docs/alerts/ for each rule.
@@ -32,6 +33,14 @@ FLAW_BY_RULE = {
 }
 
 
+def cell(text: str, limit: int = 40) -> str:
+    """Shortens evidence for a Markdown table cell."""
+    text = " ".join(text.split()).replace("|", "\\|").replace("`", "'")
+    if not text:
+        return "-"
+    return f"`{text[:limit]}`" + ("..." if len(text) > limit else "")
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         print(__doc__.strip(), file=sys.stderr)
@@ -44,7 +53,10 @@ def main() -> int:
     for site in report.get("site", []):
         for alert in site.get("alerts", []):
             instances = alert.get("instances", [])
-            example = instances[0] if instances else {}
+            # Prefer an instance where ZAP recorded evidence: instances without
+            # it are more often false positives.
+            with_evidence = [i for i in instances if i.get("evidence")]
+            example = (with_evidence or instances or [{}])[0]
             alerts.append(
                 {
                     "risk": alert.get("riskcode", "0"),
@@ -53,18 +65,21 @@ def main() -> int:
                     "count": int(alert.get("count", len(instances))),
                     "where": f"{example.get('method', '')} {example.get('uri', '')}".strip(),
                     "param": example.get("param", ""),
+                    "evidence": example.get("evidence", ""),
+                    "confidence": CONFIDENCE.get(alert.get("confidence", ""), "?"),
                 }
             )
     alerts.sort(key=lambda a: (-int(a["risk"]), a["name"]))
 
     rows = [
-        "| Risk | Alert | Rule | Instances | Example | Parameter | Planted flaw |",
-        "| --- | --- | --- | --- | --- | --- | --- |",
+        "| Risk | Confidence | Alert | Rule | Instances | Example | Parameter | Evidence | Planted flaw |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for a in alerts:
         rows.append(
-            f"| {RISKS.get(a['risk'], a['risk'])} | {a['name']} | {a['rule']} | {a['count']} "
-            f"| `{a['where']}` | {a['param'] or '-'} | {FLAW_BY_RULE.get(a['rule'], '-')} |"
+            f"| {RISKS.get(a['risk'], a['risk'])} | {a['confidence']} | {a['name']} | {a['rule']} "
+            f"| {a['count']} | `{a['where']}` | {a['param'] or '-'} "
+            f"| {cell(a['evidence'])} | {FLAW_BY_RULE.get(a['rule'], '-')} |"
         )
 
     high = [a for a in alerts if a["risk"] == "3"]

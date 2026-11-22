@@ -54,6 +54,7 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 | Manifests on a throwaway k3s cluster, 2026-11-22 | Deployed; app pod runs as UID 0; `run_all.py` found 7 of 7 flaws exploitable |
 | actionlint and ShellCheck, 2026-11-22 | No errors |
 | Authenticated ZAP scan on kind, 2026-11-23 | Blocked: 4 High alerts confirming F02, F03 and F04; 3 Medium, including missing CSRF tokens (O1) |
+| CI run 45083855384, 2026-11-23 | ZAP blocked with the same 4 High alerts, plus one false positive on `/documents/1/share`; report in `docs/evidence/` |
 | CI run 45071375296 on pull request #2, 2026-11-22 | All five checks failed with the same results as locally; log in `docs/evidence/` |
 
 ## Known limitations
