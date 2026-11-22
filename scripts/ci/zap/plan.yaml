@@ -1,0 +1,74 @@
+# OWASP ZAP Automation Framework plan: authenticated scan of DocVault.
+# Run by scripts/ci/dast.sh, which replaces ${DAST_TARGET} with the app's
+# address. ZAP reads SEED_PASSWORD from the environment; it is never written here.
+env:
+  contexts:
+    - name: docvault
+      urls:
+        - ${DAST_TARGET}
+      includePaths:
+        - "${DAST_TARGET}.*"
+      excludePaths:
+        # Signing out would end the scan's session.
+        - "${DAST_TARGET}/logout.*"
+        # Deleting would remove the documents the scan is testing.
+        - "${DAST_TARGET}/documents/\\d+/delete.*"
+      authentication:
+        method: form
+        parameters:
+          loginPageUrl: ${DAST_TARGET}/login
+          loginRequestUrl: ${DAST_TARGET}/login
+          loginRequestBody: "username={%username%}&password={%password%}"
+        verification:
+          method: poll
+          pollUrl: ${DAST_TARGET}/documents
+          pollFrequency: 60
+          pollUnits: requests
+          # Signed-in pages show a sign-out button; signed-out requests are
+          # redirected to the login page.
+          loggedInRegex: "Sign out"
+          loggedOutRegex: "(?i)location: /login"
+      sessionManagement:
+        method: cookie
+      users:
+        - name: alice
+          credentials:
+            username: alice
+            password: ${SEED_PASSWORD}
+  parameters:
+    failOnError: true
+    progressToStdout: true
+
+jobs:
+  - type: passiveScan-config
+    parameters:
+      maxAlertsPerRule: 10
+
+  - type: spider
+    parameters:
+      context: docvault
+      user: alice
+      maxDuration: 3
+
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 3
+
+  - type: activeScan
+    parameters:
+      context: docvault
+      user: alice
+      maxRuleDurationInMins: 3
+      maxScanDurationInMins: 20
+
+  - type: report
+    parameters:
+      template: traditional-json
+      reportDir: /zap/wrk
+      reportFile: zap-report.json
+
+  - type: report
+    parameters:
+      template: traditional-html
+      reportDir: /zap/wrk
+      reportFile: zap-report.html
