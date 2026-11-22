@@ -4,13 +4,13 @@ Last updated: 2026-11-09
 
 ## Current status
 
-The project theme is DocVault, pending validation by the professor. The repository layout, part of the security CI, and draft design documents exist. No application code has been written.
+The deliberately vulnerable DocVault application works locally, and all seven planted flaws are confirmed exploitable. The theme is pending validation by the professor.
 
 | Step | Status |
 | --- | --- |
 | 1. Theme reservation (Annexe A) | Drafted, not submitted |
 | 2. Threat model and blocking policy | Drafted, awaiting review |
-| 3. Vulnerable application, with flaws documented | Not started |
+| 3. Vulnerable application, with flaws documented | Built on `vulnerable-baseline`; flaws documented |
 | 4. Hardened container and five-check CI, with proof that it blocks | In progress: 3 of 5 checks active |
 | 5. Hardened Kubernetes deployment and Kyverno | Not started |
 | 6. Authenticated ZAP in the pipeline | Not started |
@@ -21,28 +21,34 @@ The project theme is DocVault, pending validation by the professor. The reposito
 
 ## Completed
 
-- Repository layout
-- Security CI workflow running Gitleaks, Semgrep and Trivy from digest-pinned images
+- Repository layout, merged to `main`
+- CI workflow running Gitleaks, Semgrep and Trivy from digest-pinned images; first GitHub run passed on 2026-11-09 (before any application code existed)
+- Vulnerable application with login, three roles, upload, search, sharing, admin pages and an audit log
+- Vulnerability register for F01 to F07
 
 ## Tests executed
 
-Run locally with Docker on 2026-11-09, using `scripts/ci/scan.sh`. The planted problems were placed in a throwaway copy of the repository.
+Run locally with Docker on 2026-11-09.
 
-| Check | Input | Result |
-| --- | --- | --- |
-| Gitleaks | Planted token in the working tree | Blocked, exit 1 |
-| Gitleaks | Planted token only in Git history | Blocked, exit 1 |
-| Gitleaks | Scan output for a planted token | Token redacted |
-| Semgrep | Flask route with shell command injection | Blocked, 3 findings |
-| Trivy | `pyyaml==5.3` in `requirements.txt` | Blocked, 2 critical CVEs |
-| actionlint | `.github/workflows/ci.yml` | No errors |
-| ShellCheck | `scripts/ci/scan.sh` | No errors |
+| Check | Result |
+| --- | --- |
+| `scripts/exploits/run_all.py` | 7 of 7 flaws exploitable |
+| Exploit script against a non-local target | Refused |
+| Members and auditors requesting `/admin/users` | HTTP 403 |
+| Members requesting `/audit` | HTTP 403 |
+| Unshared document's detail page, and sharing another user's document | HTTP 403 |
+| Sharing a document, then reading it as the recipient | Works |
+| Gitleaks on the application | Blocked: F05 found, value redacted |
+| Semgrep on the application | Blocked: F02 and F07 found; F03 and F04 missed |
+| Trivy on the application | Blocked: 2 critical CVEs in PyYAML (F06) |
 
 ## Known limitations
 
-- The workflow has not yet run on GitHub.
-- Trivy has nothing to scan until dependency files exist, so its pass on the current repository proves nothing yet.
-- Semgrep downloads its rule packs at scan time, so those rules are not version-pinned.
+- The application has not yet been run through CI on GitHub.
+- The Kubernetes part of F07 is not built yet.
+- ZAP, the image scan and Checkov have not been run.
+- The current Semgrep rule packs miss F03 and F04.
+- No automated test suite exists yet; the exploit script is the only repeatable check.
 
 ## Open questions
 
@@ -52,10 +58,10 @@ Run locally with Docker on 2026-11-09, using `scripts/ci/scan.sh`. The planted p
 
 ## Security issues
 
-None recorded.
+Seven planted flaws and three unplanned weaknesses are open. See the [vulnerability register](vulnerability-register.md).
 
 ## Next steps
 
-1. Review the threat model and security policy.
-2. Build the vulnerable application and document each flaw before fixing it.
-3. Add the image scan and Checkov to CI once there is an image and manifests to scan.
+1. Push `vulnerable-baseline` and capture the failing pipeline as evidence.
+2. Add the image scan and Checkov to CI, with baseline Kubernetes manifests.
+3. Add ZAP, then fix each flaw on its own branch.

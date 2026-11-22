@@ -1,0 +1,53 @@
+:root {
+  color-scheme: light dark;
+  --border: #8884;
+  --accent: #2563eb;
+  --danger: #b91c1c;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: 16px/1.5 system-ui, sans-serif;
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.brand { font-weight: 700; text-decoration: none; }
+
+nav { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
+
+.who { opacity: 0.7; }
+
+main { max-width: 56rem; margin: 0 auto; padding: 1rem; }
+
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+
+th, td { padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border); }
+
+.stack { display: grid; gap: 0.75rem; max-width: 24rem; }
+
+.row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: end; }
+
+label { display: grid; gap: 0.25rem; }
+
+input, select, textarea { font: inherit; padding: 0.4rem; }
+
+button { font: inherit; padding: 0.4rem 0.9rem; cursor: pointer; }
+
+button.danger { color: var(--danger); }
+
+.error { color: var(--danger); }
+
+dt { font-weight: 600; }
+
+dd { margin: 0 0 0.5rem; }

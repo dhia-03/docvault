@@ -10,3 +10,4 @@ The last column is for the student to complete after reviewing each item.
 | 2026-11-09 | Repository layout, `.gitignore`, `scripts/ci/scan.sh` and `.github/workflows/ci.yml` | Each scanner blocked a planted problem in a throwaway copy; actionlint and ShellCheck passed | To complete |
 | 2026-11-09 | Draft threat model and security policy | Reviewed against the course requirements and the OWASP Top 10:2025 list | To complete |
 | 2026-11-09 | Draft of Annexe A (theme reservation) | None | To complete |
+| 2026-11-09 | Vulnerable DocVault application, Dockerfile, Compose file, exploit script and vulnerability register | App ran locally; all 7 flaws exploited on localhost; role restrictions tested; Gitleaks, Semgrep and Trivy run | To complete |

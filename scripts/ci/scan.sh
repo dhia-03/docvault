@@ -26,8 +26,15 @@ RUN=(docker run --rm
   -w /repo)
 
 scan_gitleaks() {
+  # The local .env holds test passwords, is ignored by Git and is never
+  # committed. Hide it here only: the history scan below still covers it.
+  local mask_env=()
+  if [ -f "$REPO_ROOT/.env" ] && git -C "$REPO_ROOT" check-ignore -q .env; then
+    mask_env=(--mount "type=bind,src=/dev/null,dst=/repo/.env,readonly")
+  fi
+
   echo "==> Gitleaks: working tree"
-  "${RUN[@]}" --network none "$GITLEAKS_IMAGE" \
+  "${RUN[@]}" "${mask_env[@]}" --network none "$GITLEAKS_IMAGE" \
     dir --no-banner --redact --verbose --exit-code 1 /repo
 
   if git -C "$REPO_ROOT" rev-parse --quiet --verify HEAD >/dev/null; then

@@ -85,17 +85,17 @@ flowchart LR
 
 ## Planned initial flaws
 
-The course requires at least four deliberate flaws. These seven are planned. Each will be documented, exploited and then fixed. The detection column is what we expect and must be confirmed by a real run.
+The course requires at least four deliberate flaws. These seven are built, and their details are in the [vulnerability register](vulnerability-register.md). The detection column lists real Gitleaks, Semgrep and Trivy results. ZAP, the image scan, Checkov and Kyverno are still expected results until they run.
 
-| ID | Flaw | CWE | OWASP 2025 | Proof of exploitation | Expected detection |
+| ID | Flaw | CWE | OWASP 2025 | Proof of exploitation | Detection |
 | --- | --- | --- | --- | --- | --- |
 | F01 | A member can download another member's document by changing its ID | CWE-639 | A01 Broken Access Control | Two-user test script | Not reliably found by scanners; covered by automated tests |
-| F02 | SQL injection in document search | CWE-89 | A05 Injection | Extract data through the search field | Semgrep, ZAP |
-| F03 | Script injection through the search page and document titles | CWE-79 | A05 Injection | Script runs in the victim's browser | Semgrep, ZAP |
-| F04 | Path traversal in file upload and download | CWE-22 | A01 Broken Access Control | Read a file outside the storage folder | Semgrep, ZAP |
+| F02 | SQL injection in document search | CWE-89 | A05 Injection | Extract data through the search field | Semgrep; ZAP expected |
+| F03 | Script injection through the search page and document titles | CWE-79 | A05 Injection | Script runs in the victim's browser | Missed by Semgrep; ZAP expected |
+| F04 | Path traversal in file upload and download | CWE-22 | A01 Broken Access Control | Read a file outside the storage folder | Missed by Semgrep; ZAP expected |
 | F05 | Session signing key hard-coded and committed (test value only) | CWE-798 | A07 Authentication Failures | Forge a session with the exposed key | Gitleaks |
 | F06 | Dependency with a known critical vulnerability | CWE-1395 | A03 Software Supply Chain Failures | Show the CVE and affected use | Trivy |
-| F07 | Container runs as root and the deployment is unrestricted | CWE-250 | A02 Security Misconfiguration | Show root access inside the pod; admission rejection after the fix | Checkov, Kyverno |
+| F07 | Container runs as root and the deployment is unrestricted | CWE-250 | A02 Security Misconfiguration | Show root access inside the pod; admission rejection after the fix | Semgrep; Checkov and Kyverno expected |
 
 F02, F03 and F04 are the candidates for the two flaws that ZAP must confirm.
 
