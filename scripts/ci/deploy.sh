@@ -6,6 +6,7 @@
 #   up    create the cluster if needed, build and load the image, deploy,
 #         then check that the app answers and that a test user can sign in.
 #         Needs POSTGRES_PASSWORD and SEED_PASSWORD in the environment.
+#         The app is then reachable on http://127.0.0.1:$APP_TEST_PORT only.
 #   logs  print pod status, events and logs, for debugging a failed deploy
 #   down  delete the cluster
 set -euo pipefail
@@ -13,7 +14,8 @@ set -euo pipefail
 CLUSTER="docvault"
 NAMESPACE="docvault"
 APP_IMAGE="docvault-app:dev"
-FORWARD_PORT="${FORWARD_PORT:-18000}"
+APP_TEST_PORT="${APP_TEST_PORT:-18000}"
+NODE_PORT=30080 # Must match deploy/test/access.yaml.
 
 # Pinned tools, verified against the checksums published with each release.
 KIND_VERSION="v0.33.0"
@@ -59,7 +61,17 @@ up() {
     echo "==> Using existing kind cluster '$CLUSTER'"
   else
     echo "==> Creating kind cluster '$CLUSTER'"
-    "$KIND" create cluster --name "$CLUSTER" --image "$NODE_IMAGE" --wait 120s
+    # Map the test node port to the host's loopback interface only.
+    "$KIND" create cluster --name "$CLUSTER" --image "$NODE_IMAGE" --wait 120s --config - <<KIND
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: $NODE_PORT
+        hostPort: $APP_TEST_PORT
+        listenAddress: 127.0.0.1
+KIND
   fi
 
   echo "==> Building $APP_IMAGE"
@@ -94,6 +106,7 @@ up() {
     --from-file="$secret_dir" --dry-run=client -o yaml \
     | "${KUBECTL[@]}" apply -f -
   "${KUBECTL[@]}" apply -f "$REPO_ROOT/deploy/k8s/"
+  "${KUBECTL[@]}" apply -f "$REPO_ROOT/deploy/test/access.yaml"
   # The image tag does not change between builds, so restart to pick up a new one.
   "${KUBECTL[@]}" -n "$NAMESPACE" rollout restart deployment/docvault
   "${KUBECTL[@]}" -n "$NAMESPACE" rollout status statefulset/db --timeout=300s
@@ -104,24 +117,19 @@ up() {
 
 smoke_test() {
   local password_file="$1"
-  echo "==> Smoke test through a port-forward on 127.0.0.1:$FORWARD_PORT"
-  local base="http://127.0.0.1:$FORWARD_PORT"
-  local forward_pid="" ok=""
+  local base="http://127.0.0.1:$APP_TEST_PORT"
+  echo "==> Smoke test on $base"
 
-  # The baseline has no readiness probe, so the pod counts as ready before the
-  # app listens. A port-forward exits on its first refused connection, so
-  # restart it until /healthz answers.
+  # The baseline has no readiness probe, so the pod counts as ready before
+  # the app listens. Wait for /healthz instead.
+  local ok=""
   for _ in $(seq 90); do
-    if [ -z "$forward_pid" ] || ! kill -0 "$forward_pid" 2>/dev/null; then
-      "${KUBECTL[@]}" -n "$NAMESPACE" port-forward svc/docvault "$FORWARD_PORT:8000" >/dev/null 2>&1 &
-      forward_pid=$!
-    fi
     if [ "$(curl -fsS "$base/healthz" 2>/dev/null)" = "ok" ]; then ok=1; break; fi
     sleep 2
   done
   if [ -z "$ok" ]; then
-    kill "$forward_pid" 2>/dev/null || true
-    echo "Smoke test failed: /healthz did not answer within 3 minutes" >&2
+    echo "Smoke test failed: /healthz did not answer within 3 minutes." >&2
+    echo "A cluster created before the port mapping existed needs '$0 down' first." >&2
     exit 1
   fi
   echo "    /healthz answered ok"
@@ -131,7 +139,6 @@ smoke_test() {
   headers="$(curl -sS -o /dev/null -D - "$base/login" \
     --data-urlencode "username=alice" \
     --data-urlencode "password@$password_file")"
-  kill "$forward_pid"
   if ! grep -qiE '^HTTP/[0-9.]+ 30[23]' <<<"$headers" || ! grep -qi '^set-cookie:' <<<"$headers"; then
     echo "Smoke test failed: test user could not sign in" >&2
     exit 1

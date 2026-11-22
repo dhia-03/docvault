@@ -85,7 +85,7 @@ flowchart LR
 
 ## Planned initial flaws
 
-The course requires at least four deliberate flaws. These seven are built, and their details are in the [vulnerability register](vulnerability-register.md). The detection column lists real Gitleaks, Semgrep, Trivy and Checkov results. ZAP and Kyverno are still expected results until they run.
+The course requires at least four deliberate flaws. These seven are built, and their details are in the [vulnerability register](vulnerability-register.md). The detection column lists real Gitleaks, Semgrep, Trivy, Checkov and ZAP results. Kyverno is still an expected result until it runs.
 
 | ID | Flaw | CWE | OWASP 2025 | Proof of exploitation | Detection |
 | --- | --- | --- | --- | --- | --- |

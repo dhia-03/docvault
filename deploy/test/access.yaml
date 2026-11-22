@@ -1,0 +1,17 @@
+# Test access only, not part of the application deployment.
+# scripts/ci/deploy.sh maps this node port to 127.0.0.1 on the host, so the
+# smoke test and ZAP reach the app without a kubectl port-forward, which
+# stops on the first refused connection.
+apiVersion: v1
+kind: Service
+metadata:
+  name: docvault-test-access
+  namespace: docvault
+spec:
+  type: NodePort
+  selector:
+    app: docvault
+  ports:
+    - port: 8000
+      targetPort: 8000
+      nodePort: 30080

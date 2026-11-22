@@ -11,7 +11,7 @@ The build fails on any exposed secret and on any high-impact issue that we can a
 | Dependencies | Trivy | `HIGH` or `CRITICAL` with a fix available | These can lead to remote compromise or data loss, and an upgrade path exists. Blocking on unfixable issues would stop delivery with no action available to the developer | Active |
 | Container image | Trivy | `HIGH` or `CRITICAL` with a fix available | Same reasoning as dependencies. It also covers operating-system packages that a dependency scan cannot see | Active |
 | Deployment files | Checkov | Any failed check on the Dockerfile or Kubernetes manifests | These files are ours and small, and each failure can be fixed by a configuration change without waiting for anyone | Active |
-| Dynamic testing, after deployment to a throwaway kind cluster | OWASP ZAP | Any `High` risk alert | This covers exploitable behavior on the running application, such as SQL injection. `Medium` alerts are often missing headers and are tracked instead of blocking | Planned |
+| Dynamic testing, after deployment to a throwaway kind cluster | OWASP ZAP | Any `High` risk alert | This covers exploitable behavior on the running application, such as SQL injection. `Medium` alerts are often missing headers and are tracked instead of blocking | Active |
 
 ## Deliberately vulnerable version
 
@@ -53,11 +53,13 @@ Each exception is approved by the project owner. In a one-person project the aut
 A passing pipeline does not mean DocVault is secure.
 
 - Scanners do not reliably find business-logic flaws such as broken access control. F01 depends on automated tests.
-- The current Semgrep rule packs missed two planted flaws, F03 (XSS) and F04 (path traversal), at every severity.
+- The current Semgrep rule packs missed two planted flaws, F03 (XSS) and F04 (path traversal), at every severity. ZAP found both.
 - Semgrep's `WARNING` and `INFO` rules are not run in the blocking stage.
 - Semgrep rule packs are downloaded at scan time and are not version-pinned, so results can change between runs.
 - Checkov's "any failed check" threshold includes checks that are good practice rather than security, such as liveness probes. Some will not fit a local cluster: an `Always` pull policy and image digests need a registry. These will be handled through recorded exceptions, not by lowering the threshold.
 - The image scan only covers the application image. The PostgreSQL image is pulled as-is and is not scanned.
 - `--ignore-unfixed` hides vulnerabilities that have no fix yet. A critical issue with no fix does not fail the build.
 - Vulnerability scanners only find publicly known issues.
-- ZAP only tests the pages and inputs it reaches.
+- ZAP only tests the pages and inputs it reaches, as the single test user `alice`. It does not test access between users, so it cannot find F01.
+- ZAP did not report the stored XSS in document titles, only the reflected one.
+- The ZAP environment is a throwaway kind cluster, not the final deployment. Hardening differences between the two are not tested.
