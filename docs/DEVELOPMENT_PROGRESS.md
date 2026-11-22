@@ -13,7 +13,7 @@ The deliberately vulnerable DocVault application works locally with Docker Compo
 | 3. Vulnerable application, with flaws documented | Built on `vulnerable-baseline`; flaws documented |
 | 4. Hardened container and five-check CI, with proof that it blocks | Five checks active and blocking; container not hardened yet |
 | 5. Hardened Kubernetes deployment and Kyverno | Baseline manifests only |
-| 6. Authenticated ZAP in the pipeline | Not started |
+| 6. Authenticated ZAP in the pipeline | Deploy stage done; ZAP not started |
 | 7. Fix each flaw and re-test | Not started |
 | 8. Revoke-then-purge demonstration | Not started |
 | 9. Runtime detection and incident response plan | Not started |
@@ -30,6 +30,7 @@ The deliberately vulnerable DocVault application works locally with Docker Compo
 - `vulnerable-baseline` pushed and tagged `v0-vulnerable`; draft pull request #2 kept open as CI evidence, never to be merged
 - Image scan (Trivy) and deployment-file scan (Checkov) added to CI
 - Baseline Kubernetes manifests in `deploy/k8s/`, including the Kubernetes half of F07
+- Deploy stage in CI: `scripts/ci/deploy.sh` deploys to a throwaway kind cluster on the runner and signs in as a test user; it is the base for the ZAP scan
 
 ## Tests executed
 
@@ -56,7 +57,8 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 ## Known limitations
 
 - The image scan and Checkov have run locally but not yet on GitHub.
-- The manifests were tested on k3s, not yet on Minikube.
+- The deploy stage uses kind, not Minikube. The same script runs locally, so Minikube is no longer needed.
+- The deploy stage does not wait for the static checks, so the vulnerable baseline can be scanned by ZAP. Merging still needs every check.
 - ZAP has not been run.
 - The current Semgrep rule packs miss F03 and F04.
 - No automated test suite exists yet; the exploit script is the only repeatable check.
@@ -74,5 +76,5 @@ Seven planted flaws and five unplanned weaknesses are open. See the [vulnerabili
 ## Next steps
 
 1. Screenshot the merge box of pull request #2, showing the merge blocked by the five failing checks.
-2. Deploy on Minikube, then harden the container and manifests and add Kyverno.
-3. Add an authenticated ZAP scan, then fix each flaw on its own branch.
+2. Add the authenticated ZAP scan after the deploy stage, and confirm at least two flaws on the baseline.
+3. Harden the container and manifests and add Kyverno, then fix each flaw on its own branch.

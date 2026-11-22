@@ -8,25 +8,22 @@ The manifests in `k8s/` mirror `docker-compose.yml` and have no hardening: no se
 
 ## Deploying locally
 
-Requires a local cluster such as Minikube, and the passwords from `.env`.
+[`scripts/ci/deploy.sh`](../scripts/ci/deploy.sh) deploys to a throwaway [kind](https://kind.sigs.k8s.io/) cluster. CI runs the same script before the DAST scan. It needs Docker on Linux x86_64 (WSL works). It downloads pinned versions of kind and kubectl and checks their checksums, so nothing else needs installing.
 
 ```bash
-# 1. Build the image inside Minikube, so no registry is needed.
-minikube image build -t docvault-app:dev backend
-
-# 2. Namespace and secrets. The passwords are never written to a file in Git.
-kubectl apply -f deploy/k8s/00-namespace.yaml
-set -a; . ./.env; set +a
-kubectl -n docvault create secret generic docvault-secrets \
-  --from-literal=POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
-  --from-literal=SEED_PASSWORD="$SEED_PASSWORD"
-
-# 3. Database and application.
-kubectl apply -f deploy/k8s/
-kubectl -n docvault rollout status deploy/docvault
-
-# 4. Reach the app on this machine only.
-kubectl -n docvault port-forward svc/docvault 8000:8000
+set -a; . ./.env; set +a          # test passwords, never committed
+scripts/ci/deploy.sh up            # cluster, image, deploy, smoke test
 ```
+
+`up` builds the app image, pulls the PostgreSQL image on the host and loads both into the cluster, so the cluster downloads nothing itself. It ends with a smoke test: `/healthz` must answer and the test user `alice` must be able to sign in.
+
+To open the app on this machine only:
+
+```bash
+~/.cache/docvault/bin/kubectl-v1.37.0 --context kind-docvault \
+  -n docvault port-forward svc/docvault 8000:8000
+```
+
+`scripts/ci/deploy.sh logs` prints pod status, events and logs. `scripts/ci/deploy.sh down` deletes the cluster.
 
 The app container may restart a few times while PostgreSQL starts, because nothing makes it wait for the database yet.
