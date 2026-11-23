@@ -116,6 +116,18 @@ def stored_file(document: Document) -> Path:
     return path
 
 
+def get_readable_document(db: Session, document_id: int, user: User) -> Document:
+    """Returns a document the user may read: their own, or one shared with them.
+
+    F01 fix: every route that shows or serves a document goes through this
+    one function, so a new route cannot forget the access check.
+    """
+    document = get_document(db, document_id)
+    if not can_read(db, document, user):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return document
+
+
 def get_owned_document(db: Session, document_id: int, user: User) -> Document:
     document = get_document(db, document_id)
     if document.owner_id != user.id:
@@ -239,9 +251,7 @@ def document_detail(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> Response:
-    document = get_document(db, document_id)
-    if not can_read(db, document, user):
-        raise HTTPException(status_code=403, detail="Forbidden")
+    document = get_readable_document(db, document_id, user)
     return render(request, "document.html", user=user, document=document)
 
 
@@ -251,8 +261,8 @@ def download_document(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> Response:
-    # VULN F01: any signed-in user can download any document; no access check.
-    document = get_document(db, document_id)
+    # F01 fix: the download now has the same access check as the detail page.
+    document = get_readable_document(db, document_id, user)
     audit(db, user.username, "download", f"document:{document.id}")
     return FileResponse(stored_file(document), filename=os.path.basename(document.filename))
 
@@ -265,9 +275,7 @@ def preview_document(
 ) -> str:
     # F04 fix: the preview is chosen by document ID, after an access check,
     # instead of by a file path from the request.
-    document = get_document(db, document_id)
-    if not can_read(db, document, user):
-        raise HTTPException(status_code=403, detail="Forbidden")
+    document = get_readable_document(db, document_id, user)
     with open(stored_file(document), encoding="utf-8", errors="replace") as source:
         return source.read()
 
