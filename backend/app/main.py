@@ -20,7 +20,7 @@ from fastapi.responses import (
 )
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select, text
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from app.auth import (
@@ -154,14 +154,18 @@ def list_documents(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> Response:
-    # VULN F02: the search term is concatenated into the SQL statement.
+    # F02 fix: the query is built by SQLAlchemy, so the search term is sent as
+    # a bound parameter and never becomes part of the SQL text. LIKE's own
+    # wildcards are escaped too, so "%" or "_" only match themselves.
+    pattern = "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
     query = (
-        "SELECT d.id, d.title, d.filename, d.created_at FROM documents d "
-        f"LEFT JOIN shares s ON s.document_id = d.id AND s.user_id = {user.id} "
-        f"WHERE (d.owner_id = {user.id} OR s.user_id IS NOT NULL) "
-        f"AND d.title ILIKE '%{q}%' ORDER BY d.id"
+        select(Document)
+        .outerjoin(Share, and_(Share.document_id == Document.id, Share.user_id == user.id))
+        .where(or_(Document.owner_id == user.id, Share.user_id.is_not(None)))
+        .where(Document.title.ilike(pattern, escape="\\"))
+        .order_by(Document.id)
     )
-    documents = db.execute(text(query)).mappings().all()
+    documents = db.scalars(query).all()
     return render(request, "documents.html", user=user, documents=documents, q=q)
 
 
