@@ -256,8 +256,9 @@ def update_metadata(
 ) -> Response:
     document = get_owned_document(db, document_id, user)
     try:
-        # VULN F06: this PyYAML version lets FullLoader construct Python objects.
-        data = yaml.load(metadata, Loader=yaml.FullLoader)
+        # F06 fix: safe_load only builds plain data (strings, numbers, lists,
+        # mappings). Tags such as !!python/object are refused as YAMLError.
+        data = yaml.safe_load(metadata)
     except yaml.YAMLError as exc:
         raise HTTPException(status_code=400, detail="Invalid metadata") from exc
 
