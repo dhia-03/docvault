@@ -7,7 +7,6 @@ on localhost or in a dedicated test environment.
 
 import os
 import re
-import shutil
 import uuid
 from pathlib import Path
 
@@ -24,10 +23,10 @@ from fastapi.responses import (
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
-from app import security_events
+from app import csrf, login_throttle, security_events
 from app.auth import (
     SESSION_COOKIE,
     SESSION_MAX_AGE_SECONDS,
@@ -40,8 +39,9 @@ from app.auth import (
     session_serializer,
     verify_password,
 )
-from app.config import SESSION_COOKIE_SECURE, STORAGE_DIR
+from app.config import MAX_UPLOAD_BYTES, SESSION_COOKIE_SECURE, STORAGE_DIR, UPLOAD_QUOTA_BYTES
 from app.db import get_db
+from app.csrf import require_csrf
 from app.models import ROLES, AuditLog, Document, Share, User
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -73,10 +73,47 @@ async def add_security_headers(request: Request, call_next) -> Response:
     for name, value in SECURITY_HEADERS.items():
         response.headers.setdefault(name, value)
     return response
+
+
+# Room for the form fields and multipart framing around the file itself.
+UPLOAD_OVERHEAD_BYTES = 64 * 1024
+
+
+@app.middleware("http")
+async def csrf_cookie_and_upload_limit(request: Request, call_next) -> Response:
+    # O3 fix: refuse an oversized upload from its declared length, before the
+    # body is read and buffered in /tmp. upload_document checks again while
+    # writing, in case the declared length is missing or wrong.
+    if request.method == "POST" and request.url.path == "/documents":
+        declared = request.headers.get("content-length", "")
+        if declared.isdigit() and int(declared) > MAX_UPLOAD_BYTES + UPLOAD_OVERHEAD_BYTES:
+            return PlainTextResponse(
+                f"File too large: the limit is {MAX_UPLOAD_BYTES // (1024 * 1024)} MiB.",
+                status_code=413,
+            )
+
+    # O1 fix: every visitor gets a CSRF cookie; see app/csrf.py.
+    cookie = request.cookies.get(csrf.CSRF_COOKIE)
+    new_cookie = None
+    if not csrf.valid_cookie_value(cookie):
+        cookie = new_cookie = csrf.new_cookie_value()
+    request.state.csrf_cookie = cookie
+    response = await call_next(request)
+    if new_cookie:
+        response.set_cookie(
+            csrf.CSRF_COOKIE,
+            new_cookie,
+            httponly=True,
+            secure=SESSION_COOKIE_SECURE,
+            samesite="strict",
+        )
+    return response
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
 def render(request: Request, name: str, status_code: int = 200, **context) -> Response:
+    # Every form needs the CSRF token (O1 fix); base.html's sign-out form too.
+    context.setdefault("csrf_token", csrf.form_token(request))
     return templates.TemplateResponse(
         request, name, context, status_code=status_code
     )
@@ -199,11 +236,28 @@ def login(
     username: str = Form(...),
     password: str = Form(...),
     db: Session = Depends(get_db),
+    _csrf: None = Depends(require_csrf),
 ) -> Response:
+    # O2 fix: a locked username is refused before its password is checked.
+    locked = login_throttle.seconds_locked(username)
+    if locked:
+        security_events.login_throttled(username, client_ip(request), locked)
+        return render(
+            request,
+            "login.html",
+            status_code=429,
+            user=None,
+            error=f"Too many failed sign-ins. Try again in {max(1, locked // 60)} minute(s).",
+        )
+
     user = db.scalar(select(User).where(User.username == username))
     if user is None or not verify_password(user.password_hash, password):
         audit(db, username[:64], "login_failed")
         security_events.login_failed(username, client_ip(request))
+        if login_throttle.record_failure(username):
+            security_events.account_locked(
+                username, client_ip(request), login_throttle.LOCK_SECONDS
+            )
         return render(
             request,
             "login.html",
@@ -212,6 +266,7 @@ def login(
             error="Invalid username or password.",
         )
 
+    login_throttle.record_success(username)
     audit(db, user.username, "login")
     security_events.login_succeeded(user.username, client_ip(request))
     response = redirect("/documents")
@@ -229,7 +284,7 @@ def login(
 
 
 @app.post("/logout")
-def logout() -> Response:
+def logout(_csrf: None = Depends(require_csrf)) -> Response:
     response = redirect("/login")
     response.delete_cookie(SESSION_COOKIE)
     return response
@@ -257,26 +312,50 @@ def list_documents(
     return render(request, "documents.html", user=user, documents=documents, q=q)
 
 
+COPY_CHUNK_BYTES = 1024 * 1024
+
+
 @app.post("/documents")
 def upload_document(
     title: str = Form(...),
     file: UploadFile = File(...),
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
+    _csrf: None = Depends(require_csrf),
 ) -> Response:
     # F04 fix: the file is stored under a random name chosen by the server.
     # The client's file name is kept only for display and download, without
     # any directory part, so it can never select where the file is written.
     display_name = Path(file.filename or "").name[:255] or "upload"
     path = os.path.join(STORAGE_DIR, uuid.uuid4().hex)
+
+    # O3 fix: stop writing as soon as the file passes the size limit or the
+    # owner's quota, and leave nothing behind.
+    used = db.scalar(
+        select(func.coalesce(func.sum(Document.size_bytes), 0)).where(Document.owner_id == user.id)
+    )
+    allowed = min(MAX_UPLOAD_BYTES, max(0, UPLOAD_QUOTA_BYTES - used))
+    size = 0
     with open(path, "xb") as output:
-        shutil.copyfileobj(file.file, output)
+        while chunk := file.file.read(COPY_CHUNK_BYTES):
+            size += len(chunk)
+            if size > allowed:
+                break
+            output.write(chunk)
+    if size > allowed:
+        os.remove(path)
+        if size > MAX_UPLOAD_BYTES:
+            reason = f"File too large: the limit is {MAX_UPLOAD_BYTES // (1024 * 1024)} MiB."
+        else:
+            reason = f"Storage quota reached: {UPLOAD_QUOTA_BYTES // (1024 * 1024)} MiB per user."
+        raise HTTPException(status_code=413, detail=reason)
 
     document = Document(
         owner_id=user.id,
         title=title,
         filename=display_name,
         stored_path=path,
+        size_bytes=size,
     )
     db.add(document)
     db.commit()
@@ -326,6 +405,7 @@ def share_document(
     username: str = Form(...),
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
+    _csrf: None = Depends(require_csrf),
 ) -> Response:
     document = get_owned_document(db, document_id, user)
     recipient = db.scalar(select(User).where(User.username == username))
@@ -349,6 +429,7 @@ def update_metadata(
     metadata: str = Form(...),
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
+    _csrf: None = Depends(require_csrf),
 ) -> Response:
     document = get_owned_document(db, document_id, user)
     try:
@@ -372,6 +453,7 @@ def delete_document(
     document_id: int,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
+    _csrf: None = Depends(require_csrf),
 ) -> Response:
     document = get_owned_document(db, document_id, user)
     # Only a file inside the storage folder is deleted; a row written before
@@ -402,6 +484,7 @@ def create_user(
     role: str = Form(...),
     user: User = Depends(require_role("admin")),
     db: Session = Depends(get_db),
+    _csrf: None = Depends(require_csrf),
 ) -> Response:
     if role not in ROLES:
         raise HTTPException(status_code=400, detail="Invalid role")
@@ -419,6 +502,7 @@ def change_role(
     role: str = Form(...),
     user: User = Depends(require_role("admin")),
     db: Session = Depends(get_db),
+    _csrf: None = Depends(require_csrf),
 ) -> Response:
     if role not in ROLES:
         raise HTTPException(status_code=400, detail="Invalid role")

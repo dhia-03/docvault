@@ -13,13 +13,6 @@ from conftest import TEST_PASSWORD
 from test_security import upload
 
 
-@pytest.fixture(autouse=True)
-def fresh_counters():
-    security_events.reset()
-    yield
-    security_events.reset()
-
-
 def events(capsys) -> list[dict]:
     """The JSON security events printed so far."""
     lines = capsys.readouterr().out.splitlines()
@@ -32,7 +25,8 @@ def alerts(found: list[dict], rule: str) -> list[dict]:
 
 def fail_login(client, username: str = "alice") -> None:
     response = client.post("/login", data={"username": username, "password": "wrong-password"})
-    assert response.status_code == 401
+    # 429 once the login throttle (O2 fix) has locked the username.
+    assert response.status_code in (401, 429)
 
 
 # DV-A1: brute force

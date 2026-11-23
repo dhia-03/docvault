@@ -366,9 +366,14 @@ smoke_test() {
   fi
   echo "    /healthz answered ok"
 
-  # A successful sign-in redirects and sets the session cookie.
-  local headers
-  headers="$(curl -sS -o /dev/null -D - "$base/login" \
+  # A successful sign-in redirects and sets the session cookie. The form
+  # needs the CSRF cookie and the matching token from the login page.
+  local headers jar token
+  jar="$(dirname "$password_file")/cookies"
+  token="$(curl -fsS -c "$jar" "$base/login" \
+    | sed -nE 's/.*name="csrf_token" value="([^"]*)".*/\1/p' | head -1)"
+  headers="$(curl -sS -o /dev/null -D - -b "$jar" "$base/login" \
+    --data-urlencode "csrf_token=$token" \
     --data-urlencode "username=alice" \
     --data-urlencode "password@$password_file")"
   if ! grep -qiE '^HTTP/[0-9.]+ 30[23]' <<<"$headers" || ! grep -qi '^set-cookie:' <<<"$headers"; then

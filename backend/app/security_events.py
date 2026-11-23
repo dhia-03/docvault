@@ -37,8 +37,10 @@ ALLOWED_FIELDS = (
     "reason",
     "count",
     "window_seconds",
+    "seconds",
 )
 MAX_TEXT_LENGTH = 100
+MAX_TRACKED = 10_000
 
 
 @dataclass(frozen=True)
@@ -109,6 +111,7 @@ def _observe(rule: Rule, key: str, now: float | None = None) -> int | None:
     now = time.monotonic() if now is None else now
     slot = (rule.id, key)
     with _lock:
+        _prune(now)
         times = _events.setdefault(slot, deque())
         times.append(now)
         while times and now - times[0] > rule.window_seconds:
@@ -119,6 +122,19 @@ def _observe(rule: Rule, key: str, now: float | None = None) -> int | None:
             _last_alert[slot] = now
             return count
     return None
+
+
+def _prune(now: float) -> None:
+    """Drops stale counters, so a flood of made-up usernames cannot fill memory.
+
+    Called with the lock held.
+    """
+    if len(_events) <= MAX_TRACKED:
+        return
+    longest = max(rule.window_seconds for rule in RULES)
+    for slot in [s for s, times in _events.items() if not times or now - times[-1] > longest]:
+        del _events[slot]
+        _last_alert.pop(slot, None)
 
 
 def _alert(rule: Rule, count: int, **fields: object) -> None:
@@ -176,6 +192,21 @@ def role_denied(username: str, ip: str | None, method: str, path: str) -> None:
     count = _observe(PRIVILEGE_PROBE, f"username:{username}")
     if count is not None:
         _alert(PRIVILEGE_PROBE, count, username=username, ip=ip, path=path)
+
+
+def login_throttled(username: str, ip: str | None, seconds: int) -> None:
+    """A sign-in refused because the username is locked (O2 fix)."""
+    emit("login_throttled", username=username, ip=ip, seconds=seconds)
+
+
+def account_locked(username: str, ip: str | None, seconds: int) -> None:
+    """Too many failed sign-ins: the username is now locked (O2 fix)."""
+    emit("account_locked", username=username, ip=ip, seconds=seconds)
+
+
+def csrf_rejected(username: str | None, ip: str | None, path: str) -> None:
+    """A POST without a valid CSRF token (O1 fix): a forged form, or a stale page."""
+    emit("csrf_rejected", username=username, ip=ip, path=path)
 
 
 def reset() -> None:

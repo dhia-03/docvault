@@ -51,3 +51,8 @@ STORAGE_DIR = os.environ.get("STORAGE_DIR", "/data/documents")
 # Compose, the kind test cluster and the tests use plain HTTP, so they turn it
 # off explicitly; any deployment behind HTTPS keeps the default.
 SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "true").lower() != "false"
+
+# O3 fix: the largest file one upload may carry, and the total each user may
+# store. Both can be changed per environment.
+MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", 10 * 1024 * 1024))
+UPLOAD_QUOTA_BYTES = int(os.environ.get("UPLOAD_QUOTA_BYTES", 100 * 1024 * 1024))
