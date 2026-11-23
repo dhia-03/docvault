@@ -404,7 +404,7 @@ The `quarantine` policy can stay: it selects no pod once the quarantined one is 
 - In `$IR/pod.yaml`: `runAsUser: 10001`, `readOnlyRootFilesystem: true`, `automountServiceAccountToken: false`. If any is missing, Kyverno failed and that becomes its own finding.
 - Egress from the new app pod is blocked; this should time out, and Falco should raise DV-R2 (and DV-R4 if it exists) *(untested)*:
   `kc -n docvault exec deploy/docvault -c app -- python -c "import socket; socket.create_connection(('1.1.1.1', 443), timeout=5)"`
-- `run_all.py` against `http://127.0.0.1:18000`: 0 flaws exploitable; F07 not exploitable.
+- `run_all.py` against `http://127.0.0.1:18000`: 0 tested flaws exploitable. It reports F07 as "not tested" since F06 is fixed, so check the user directly: `kc -n docvault exec deploy/docvault -c app -- id -u` must print 10001 (this raises DV-R2, as expected).
 
 ### P3: brute force or credential stuffing
 
