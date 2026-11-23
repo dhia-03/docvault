@@ -7,5 +7,6 @@ jinja2
 python-multipart
 argon2-cffi
 itsdangerous
-# F06: deliberately vulnerable version, see docs/vulnerability-register.md
-pyyaml==5.3
+# F06 fix: no known vulnerability in 6.0.3 (OSV, 2026-11-23). The code also
+# uses safe_load, which cannot build Python objects whatever the version.
+pyyaml==6.0.3
