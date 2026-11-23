@@ -64,7 +64,7 @@ flowchart LR
 
 | ID | Category | Element | Threat | Risk | Planned control | Flaw |
 | --- | --- | --- | --- | --- | --- | --- |
-| T01 | Spoofing | Login | Password guessing or credential stuffing | Medium | Login rate limit, strong password hashing, failed-login logging | |
+| T01 | Spoofing | Login | Password guessing or credential stuffing | Medium | Login rate limit (not yet, O2), strong password hashing, failed-login logging and alert DV-A1 | |
 | T02 | Spoofing | Session | Session cookie stolen through script injection | High | `HttpOnly`, `Secure` and `SameSite` cookies; output encoding | F03 |
 | T03 | Spoofing | Session | Hard-coded signing key lets an attacker forge sessions | High | Key supplied at runtime and rotated after exposure | F05 |
 | T04 | Tampering | Database | SQL injection changes records or sharing rules | High | Parameterized queries | F02 |
@@ -76,7 +76,7 @@ flowchart LR
 | T10 | Information disclosure | Search | SQL injection extracts documents or password hashes | High | Parameterized queries, limited database account | F02 |
 | T11 | Information disclosure | Document storage | Path traversal reads files outside the storage folder | High | Look up files by ID, never by user-supplied path | F04 |
 | T12 | Information disclosure | Repository and image | Secret committed to Git or built into an image | High | Runtime secrets, secret scanning, revoke-then-purge procedure | F05 |
-| T13 | Information disclosure | Logs | Passwords, tokens or document contents written to logs | Medium | Structured logs with an allowed list of fields | |
+| T13 | Information disclosure | Logs | Passwords, tokens or document contents written to logs | Medium | Structured logs with an allowed list of fields (`security_events.py`, tested) | |
 | T14 | Denial of service | Upload | Very large or repeated uploads fill storage | Medium | Upload size limit, per-user quota, resource limits | |
 | T15 | Denial of service | Search and login | Expensive requests exhaust the application | Low | Rate limits and CPU and memory limits | |
 | T16 | Elevation of privilege | Admin pages | Member reaches admin functions | High | Server-side role check on every admin route | |
@@ -111,7 +111,7 @@ F02, F03 and F04 are the candidates for the two flaws that ZAP must confirm.
 | A06 Insecure Design | This threat model, T14 | Design review only. No tool proves this |
 | A07 Authentication Failures | F05, T01, T03 | Planned flaw and login controls |
 | A08 Software or Data Integrity Failures | T06, T07 | Pinned images and actions. Image signing is not planned |
-| A09 Security Logging and Alerting Failures | T08, T13 | Structured logs and one runtime detection |
+| A09 Security Logging and Alerting Failures | T08, T13 | Structured security events, application alerts DV-A1 to DV-A4 and Falco rules DV-R1 to DV-R4, proven in CI ([runtime detection](runtime-detection.md)) |
 | A10 Mishandling of Exceptional Conditions | T14, T15 | Error handling tests. No planned flaw |
 
 ## Out of scope

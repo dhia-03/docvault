@@ -16,7 +16,7 @@ All seven planted flaws were documented, exploited, then fixed and re-tested. Th
 | 6. Authenticated ZAP in the pipeline | Done: F02, F03 and F04 confirmed on the baseline |
 | 7. Fix each flaw and re-test | Done: all seven fixed and re-tested, merged into `secure` |
 | 8. Revoke-then-purge demonstration | Done: revoked, verified, purged and verified (`docs/f05-revoke-then-purge.md`) |
-| 9. Runtime detection and incident response plan | Not started |
+| 9. Runtime detection and incident response plan | Built on `feat/app-detection`, not merged yet; plan written, drills planned |
 | 10. Report, slides, contribution sheet and AI declaration | AI log started |
 
 ## Completed
@@ -25,6 +25,8 @@ All seven planted flaws were documented, exploited, then fixed and re-tested. Th
 - CI workflow running Gitleaks, Semgrep and Trivy from digest-pinned images; first GitHub run passed on 2026-11-09 (before any application code existed)
 - Vulnerable application with login, three roles, upload, search, sharing, admin pages and an audit log
 - Vulnerability register for F01 to F07
+- Runtime detection: application alerts DV-A1 to DV-A4 and Falco rules DV-R1 to DV-R4, each proven by a demo in the `DAST (ZAP)` job ([runtime-detection.md](runtime-detection.md))
+- Incident response plan with seven playbooks ([incident-response-plan.md](incident-response-plan.md)); no drill run yet
 - Repository made public on 2026-11-22, so that `main` can require the checks (branch protection is not available on private repositories in the free plan)
 - `main` protection: pull request required, all seven checks (five static, ZAP and the tests) must pass, applies to admins
 - `vulnerable-baseline` pushed and tagged `v0-vulnerable`; draft pull request #2 kept open as CI evidence, never to be merged
@@ -66,6 +68,7 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 | ZAP on Compose with F02, F03 and F04 fixed, 2026-11-23 | Passed: no High alert; only the CSRF `Medium` alert (O1) left |
 | pytest suite (`backend/tests/`), 2026-11-23 | 37 passed on the fixed code; on `secure` before the F01 and F03 fixes, exactly the 7 F01/F03 tests failed |
 | History purge, 2026-11-23 | Fresh clone: old value found 0 times in any commit; Gitleaks clean on working tree and 22 commits |
+| Step 9 end to end on a fresh kind cluster, 2026-11-23 | Deploy checks passed with Falco quiet; app demo: DV-A1 to DV-A4 detected; ZAP passed; Falco demo: DV-R1 to DV-R4 detected (7 of 7 checks) |
 | CI run 45083855384, 2026-11-23 | ZAP blocked with the same 4 High alerts, plus one false positive on `/documents/1/share`; report in `docs/evidence/` |
 | CI run 45071375296 on pull request #2, 2026-11-22 | All five checks failed with the same results as locally; log in `docs/evidence/` |
 
@@ -90,8 +93,8 @@ The seven planted flaws and O4, O5 are fixed. Three unplanned weaknesses are ope
 
 ## Next steps
 
-1. Merge `secure` into `main` through the open pull request, once all seven checks pass.
-2. Screenshot pull request #2 (vulnerable baseline, blocked) and the `secure` pull request (all checks green) for the report.
-3. Decide whether to ask GitHub Support to remove the old pull request references (see `docs/f05-revoke-then-purge.md`).
-4. Step 9: runtime detection and the incident response plan.
-5. Fix O1 to O3, then step 10: report, slides, Annexe B sheets and the AI declaration.
+1. Merge the step 9 pull request into `secure`, then `secure` into `main`.
+2. Run the two planned drills (P2 with the Falco demo, P1 with a forged session) and record them in the plan.
+3. Decide on the gaps the incident response plan found: no password reset or account disable, no way to sign out one user, audit log without client address or correlation ID, Dependabot off, `secure` not protected.
+4. Fix O1 to O3.
+5. Step 10: report, slides, Annexe B sheets and the AI declaration.

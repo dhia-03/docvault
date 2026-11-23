@@ -105,6 +105,17 @@ jobs:
       - name: Deploy to kind
         id: deploy
         run: bash scripts/ci/deploy.sh up
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      # Application detection: each alert DV-A1 to DV-A4 must fire. It runs
+      # before the scan, because ZAP's attacks raise the same alerts from the
+      # same address, and an alert fires at most once per minute per source.
+      - name: Application detection demo
+        run: |
+          python -m pip install -r backend/requirements-dev.txt "$(grep '^itsdangerous==' backend/requirements.txt)"
+          python scripts/security/app_detection_demo.py --base-url http://127.0.0.1:18000 \
+            --logs "$HOME/.cache/docvault/bin/kubectl-v1.37.0 --context kind-docvault -n docvault logs deploy/docvault -c app"
       - name: Authenticated ZAP scan
         run: bash scripts/ci/dast.sh
       # Runtime detection: Falco, installed by deploy.sh, must catch a shell,

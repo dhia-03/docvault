@@ -12,6 +12,7 @@ The build fails on any exposed secret and on any high-impact issue that we can a
 | Container image | Trivy | `HIGH` or `CRITICAL` with a fix available | Same reasoning as dependencies. It also covers operating-system packages that a dependency scan cannot see | Active |
 | Deployment files | Checkov | Any failed check on the Dockerfile or Kubernetes manifests | These files are ours and small, and each failure can be fixed by a configuration change without waiting for anyone | Active |
 | Dynamic testing, after deployment to a throwaway kind cluster | OWASP ZAP | Any `High` risk alert | This covers exploitable behavior on the running application, such as SQL injection. `Medium` alerts are often missing headers and are tracked instead of blocking | Active |
+| Runtime detection, after deployment (same job as ZAP) | Application alerts and Falco | Any application alert DV-A1 to DV-A4, or Falco rule DV-R1 to DV-R3, that does not fire when its demo triggers it; or any DocVault Falco alert during a normal deploy | Detection that silently stops working gives false confidence, and a noisy rule gets ignored. Both are checked on every run. DV-R4 is reported but not required | Active |
 
 ## Deliberately vulnerable version
 
