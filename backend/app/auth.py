@@ -1,6 +1,7 @@
 """Password hashing, sessions and role checks."""
 
 from collections.abc import Callable
+from functools import cache
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError
@@ -8,7 +9,7 @@ from fastapi import Depends, HTTPException, Request
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 from sqlalchemy.orm import Session
 
-from app.config import SECRET_KEY
+from app.config import signing_key
 from app.db import get_db
 from app.models import User
 
@@ -16,7 +17,16 @@ SESSION_COOKIE = "docvault_session"
 SESSION_MAX_AGE_SECONDS = 8 * 60 * 60
 
 hasher = PasswordHasher()
-serializer = URLSafeTimedSerializer(SECRET_KEY, salt="session")
+
+
+@cache
+def session_serializer() -> URLSafeTimedSerializer:
+    """Signs and checks session cookies.
+
+    Built on first use, so the migration and seeding steps, which import this
+    module for password hashing, never need the signing key.
+    """
+    return URLSafeTimedSerializer(signing_key(), salt="session")
 
 
 class NotAuthenticated(Exception):
@@ -35,7 +45,7 @@ def verify_password(password_hash: str, password: str) -> bool:
 
 
 def create_session(user: User) -> str:
-    return serializer.dumps({"uid": user.id})
+    return session_serializer().dumps({"uid": user.id})
 
 
 def current_user(request: Request, db: Session = Depends(get_db)) -> User:
@@ -43,7 +53,7 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
     if not token:
         raise NotAuthenticated
     try:
-        data = serializer.loads(token, max_age=SESSION_MAX_AGE_SECONDS)
+        data = session_serializer().loads(token, max_age=SESSION_MAX_AGE_SECONDS)
     except BadSignature as exc:
         raise NotAuthenticated from exc
     user = db.get(User, data["uid"])
