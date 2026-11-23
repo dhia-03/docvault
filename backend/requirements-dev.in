@@ -1,0 +1,3 @@
+# Test-only tools, not installed in the image.
+pytest
+httpx

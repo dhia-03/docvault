@@ -14,7 +14,7 @@ The deliberately vulnerable DocVault application works locally with Docker Compo
 | 4. Hardened container and five-check CI, with proof that it blocks | Done; hardened container on `fix/f07-hardening` |
 | 5. Hardened Kubernetes deployment and Kyverno | Done on `fix/f07-hardening`, not merged yet |
 | 6. Authenticated ZAP in the pipeline | Done: F02, F03 and F04 confirmed on the baseline |
-| 7. Fix each flaw and re-test | F07, F06, F02, F04 and F03 fixed and re-tested; F05 key revoked; F01 open |
+| 7. Fix each flaw and re-test | All seven fixed and re-tested; F05 history purge pending |
 | 8. Revoke-then-purge demonstration | Revoked and verified; purge prepared and dry-run, waiting for approval |
 | 9. Runtime detection and incident response plan | Not started |
 | 10. Report, slides, contribution sheet and AI declaration | AI log started |
@@ -62,6 +62,9 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 | F02 fix on Compose, 2026-11-23 | Not exploitable; search behaviour checked; Semgrep 0 findings |
 | F04 fix on Compose, 2026-11-23 | Not exploitable; no file written outside storage; preview, download and access check work |
 | F03 fix on Compose, 2026-11-23 | Not exploitable; CSP and other headers present; cookie `HttpOnly` |
+| F01 fix on Compose, 2026-11-23 | Not exploitable; sharing rules checked; `run_all.py`: 0 of 6 tested flaws exploitable |
+| ZAP on Compose with F02, F03 and F04 fixed, 2026-11-23 | Passed: no High alert; only the CSRF `Medium` alert (O1) left |
+| pytest suite (`backend/tests/`), 2026-11-23 | 37 passed on the fixed code; on `secure` before the F01 and F03 fixes, exactly the 7 F01/F03 tests failed |
 | CI run 45083855384, 2026-11-23 | ZAP blocked with the same 4 High alerts, plus one false positive on `/documents/1/share`; report in `docs/evidence/` |
 | CI run 45071375296 on pull request #2, 2026-11-22 | All five checks failed with the same results as locally; log in `docs/evidence/` |
 
@@ -72,7 +75,7 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 - The deploy stage does not wait for the static checks, so the vulnerable baseline can be scanned by ZAP. Merging still needs every check.
 - ZAP scans as one user, so it cannot find F01 (access between users), and it missed the stored XSS.
 - The current Semgrep rule packs miss F03 and F04.
-- No automated test suite exists yet; the exploit script is the only repeatable check.
+- The pytest suite runs on SQLite, so it checks the secure query logic, not PostgreSQL-specific behaviour. The exploit script and ZAP cover the real database.
 
 ## Open questions
 
@@ -88,4 +91,4 @@ Seven planted flaws and five unplanned weaknesses are open. See the [vulnerabili
 
 1. Screenshot the merge box of pull request #2, showing the merge blocked by the six failing checks.
 2. Merge F06 and F05 into `secure`, agree on a time for the history purge, then run it.
-3. Fix F01. `secure` goes to `main` once all six checks pass.
+3. Merge F03, F01 and the test suite into `secure`, then `secure` into `main` once all checks pass. `secure` goes to `main` once all six checks pass.
