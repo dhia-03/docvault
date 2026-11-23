@@ -6,9 +6,10 @@ from functools import cache
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError
 from fastapi import Depends, HTTPException, Request
-from itsdangerous import BadSignature, URLSafeTimedSerializer
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from sqlalchemy.orm import Session
 
+from app import security_events
 from app.config import signing_key
 from app.db import get_db
 from app.models import User
@@ -55,11 +56,24 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
     try:
         data = session_serializer().loads(token, max_age=SESSION_MAX_AGE_SECONDS)
     except BadSignature as exc:
+        # An expired session is normal. Any other bad signature means the
+        # cookie was not made with our key: forged, or signed with a leaked
+        # old key (alert DV-A2).
+        security_events.invalid_session(
+            client_ip(request), request.url.path, expired=isinstance(exc, SignatureExpired)
+        )
         raise NotAuthenticated from exc
     user = db.get(User, data["uid"])
     if user is None:
         raise NotAuthenticated
+    # Lets the error handler in main.py name the user behind a refused request.
+    request.state.user = user
     return user
+
+
+def client_ip(request: Request) -> str | None:
+    """The address the request came from, as seen by the app."""
+    return request.client.host if request.client else None
 
 
 def require_role(*roles: str) -> Callable[[User], User]:
