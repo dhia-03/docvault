@@ -3,8 +3,10 @@
 # demos. CI and local runs use this same script.
 #
 # Usage: scripts/ci/deploy.sh [up|logs|down]
-#   up    create the cluster if needed, build and load the image, deploy,
-#         then check that the app answers and that a test user can sign in.
+#   up    create the cluster if needed, install Kyverno and its policies,
+#         check that a non-compliant pod is rejected, build and load the
+#         images, deploy, check the network policies, then check that the app
+#         answers and that a test user can sign in.
 #         Needs POSTGRES_PASSWORD and SEED_PASSWORD in the environment.
 #         The app is then reachable on http://127.0.0.1:$APP_TEST_PORT only.
 #   logs  print pod status, events and logs, for debugging a failed deploy
@@ -23,21 +25,30 @@ KIND_SHA256="aee6151561422756b764a4ae28e7f44cda5af5a9eead3cc9985112b1de8d8e0d"
 KUBECTL_VERSION="v1.37.0"
 KUBECTL_SHA256="6129359f4e1f3848a5572ccb0b26cf28b8ca08cef38c95a765b2f64a2c961a2f"
 NODE_IMAGE="kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5"
+# Kyverno publishes no checksum for install.yaml in this release, so this
+# SHA-256 was recorded on first download (2026-11-23).
+KYVERNO_VERSION="v1.19.2"
+KYVERNO_SHA256="4f785937dc7fe49a0731108b15def1538923c73d9236255bc69d94d498037969"
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 TOOLS_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/docvault/bin"
 
-# Downloads a tool once, refusing it unless its checksum matches.
-fetch_tool() {
-  local name="$1" version="$2" sha256="$3" url="$4"
-  local path="$TOOLS_DIR/$name-$version"
-  if [ ! -x "$path" ]; then
+# Downloads a file once, refusing it unless its checksum matches.
+fetch_file() {
+  local path="$TOOLS_DIR/$1" sha256="$2" url="$3"
+  if [ ! -f "$path" ]; then
     mkdir -p "$TOOLS_DIR"
     curl -fsSL -o "$path.tmp" "$url"
     echo "$sha256  $path.tmp" | sha256sum --check --quiet
-    chmod +x "$path.tmp"
     mv "$path.tmp" "$path"
   fi
+  echo "$path"
+}
+
+fetch_tool() {
+  local path
+  path="$(fetch_file "$1-$2" "$3" "$4")"
+  chmod +x "$path"
   echo "$path"
 }
 
@@ -50,8 +61,15 @@ setup_tools() {
     "https://github.com/kubernetes-sigs/kind/releases/download/$KIND_VERSION/kind-linux-amd64")"
   KUBECTL_BIN="$(fetch_tool kubectl "$KUBECTL_VERSION" "$KUBECTL_SHA256" \
     "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl")"
+  KYVERNO_MANIFEST="$(fetch_file "kyverno-install-$KYVERNO_VERSION.yaml" "$KYVERNO_SHA256" \
+    "https://github.com/kyverno/kyverno/releases/download/$KYVERNO_VERSION/install.yaml")"
   # Always target this cluster, whatever the current kubectl context is.
   KUBECTL=("$KUBECTL_BIN" --context "kind-$CLUSTER")
+}
+
+# Prints every image referenced by the given manifests.
+images_in() {
+  sed -nE 's/^[[:space:]]*image:[[:space:]]*"?([^"[:space:]]+)"?.*/\1/p' "$@" | sort -u
 }
 
 up() {
@@ -77,19 +95,27 @@ KIND
   echo "==> Building $APP_IMAGE"
   docker build -t "$APP_IMAGE" "$REPO_ROOT/backend"
 
-  # Pull every other image on the host and load it into the cluster, so the
-  # cluster never downloads anything itself. DNS inside the kind node can be
-  # unreliable (seen on WSL), and this also avoids registry rate limits.
+  # Pull images referenced by tag on the host and load them into the cluster,
+  # so the cluster does not download them itself: DNS inside the kind node can
+  # be unreliable (seen on WSL), and this also avoids registry rate limits.
+  # Images pinned by digest are left for the cluster to pull, because it then
+  # checks the digest; an exported copy gets a different digest and would not
+  # match the pin.
   local image
   local images=("$APP_IMAGE")
   while read -r image; do
     [ "$image" = "$APP_IMAGE" ] && continue
-    docker pull --quiet --platform linux/amd64 "$image"
+    if [[ "$image" == *@sha256:* ]]; then
+      echo "    $image: pulled and verified by the cluster"
+      continue
+    fi
+    docker pull --quiet --platform linux/amd64 "$image" >/dev/null
     images+=("$image")
-  done < <(sed -nE 's/^[[:space:]]*image:[[:space:]]*"?([^"[:space:]]+)"?.*/\1/p' \
-    "$REPO_ROOT"/deploy/k8s/*.yaml | sort -u)
+  done < <(images_in "$REPO_ROOT"/deploy/k8s/*.yaml "$KYVERNO_MANIFEST")
   echo "==> Loading into the cluster: ${images[*]}"
   "$KIND" load docker-image --name "$CLUSTER" "${images[@]}"
+
+  install_kyverno
 
   # Passwords go through files, not command-line arguments, so other
   # processes cannot read them from the process list.
@@ -102,17 +128,111 @@ KIND
 
   echo "==> Deploying"
   "${KUBECTL[@]}" apply -f "$REPO_ROOT/deploy/k8s/00-namespace.yaml"
+  check_admission
   "${KUBECTL[@]}" -n "$NAMESPACE" create secret generic docvault-secrets \
     --from-file="$secret_dir" --dry-run=client -o yaml \
     | "${KUBECTL[@]}" apply -f -
+  local existing=""
+  "${KUBECTL[@]}" -n "$NAMESPACE" get deployment/docvault >/dev/null 2>&1 && existing=1
   "${KUBECTL[@]}" apply -f "$REPO_ROOT/deploy/k8s/"
   "${KUBECTL[@]}" apply -f "$REPO_ROOT/deploy/test/access.yaml"
-  # The image tag does not change between builds, so restart to pick up a new one.
-  "${KUBECTL[@]}" -n "$NAMESPACE" rollout restart deployment/docvault
+  # The image tag does not change between builds, so restart an existing
+  # deployment to pick up a new one. A new deployment needs no restart, and a
+  # restart would run a second seeding init container at the same time.
+  if [ -n "$existing" ]; then
+    "${KUBECTL[@]}" -n "$NAMESPACE" rollout restart deployment/docvault
+  fi
   "${KUBECTL[@]}" -n "$NAMESPACE" rollout status statefulset/db --timeout=300s
   "${KUBECTL[@]}" -n "$NAMESPACE" rollout status deployment/docvault --timeout=300s
 
+  check_network_policy
   smoke_test "$secret_dir/SEED_PASSWORD"
+}
+
+install_kyverno() {
+  echo "==> Installing Kyverno $KYVERNO_VERSION and the DocVault policies"
+  # Server-side apply: the CRDs are too large for client-side apply.
+  "${KUBECTL[@]}" apply --server-side --force-conflicts -f "$KYVERNO_MANIFEST" >/dev/null
+  "${KUBECTL[@]}" -n kyverno wait deployment --all --for=condition=Available --timeout=300s
+  # The deployments report Available a little before the webhook serves, and
+  # applying a policy goes through that webhook, so retry for a while.
+  local attempt
+  for attempt in $(seq 24); do
+    if "${KUBECTL[@]}" apply -f "$REPO_ROOT/deploy/kyverno/" 2>/dev/null; then break; fi
+    if [ "$attempt" -eq 24 ]; then
+      "${KUBECTL[@]}" apply -f "$REPO_ROOT/deploy/kyverno/" # Show the error.
+    fi
+    sleep 5
+  done
+  "${KUBECTL[@]}" wait clusterpolicy --all --for=condition=Ready --timeout=120s
+}
+
+# Proves the policies are enforced: a pod like the baseline's, with no
+# security context, must be refused at admission.
+check_admission() {
+  echo "==> Kyverno: a pod with no security context must be rejected"
+  local output
+  if output="$("${KUBECTL[@]}" -n "$NAMESPACE" run kyverno-check --image="$APP_IMAGE" \
+    --restart=Never --dry-run=server -o name 2>&1)"; then
+    echo "Kyverno admitted a non-compliant pod." >&2
+    exit 1
+  fi
+  if ! grep -q 'admission webhook "validate.kyverno.svc' <<<"$output"; then
+    echo "The pod was refused, but not by Kyverno:" >&2
+    echo "$output" >&2
+    exit 1
+  fi
+  grep -oE '(pod-security-restricted|require-read-only-root-filesystem|require-resource-limits|disallow-service-account-token)' \
+    <<<"$output" | sort -u | sed 's/^/    rejected by policy: /'
+}
+
+# Proves the network policies are enforced: a pod outside the namespace must
+# not reach the database, which only accepts connections from the app.
+check_network_policy() {
+  echo "==> Network policy: the database must be unreachable from another namespace"
+  local check_ns="netpol-check" db_image
+  db_image="$(images_in "$REPO_ROOT/deploy/k8s/10-db.yaml" | head -1)"
+  "${KUBECTL[@]}" create namespace "$check_ns" --dry-run=client -o yaml | "${KUBECTL[@]}" apply -f - >/dev/null
+  "${KUBECTL[@]}" -n "$check_ns" delete pod probe --ignore-not-found >/dev/null
+  "${KUBECTL[@]}" -n "$check_ns" apply -f - >/dev/null <<POD
+apiVersion: v1
+kind: Pod
+metadata:
+  name: probe
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: probe
+      image: $db_image
+      imagePullPolicy: IfNotPresent
+      # -U is needed: UID 10001 has no user entry to take a default name from.
+      command: ["pg_isready", "-U", "docvault", "-h", "db.$NAMESPACE.svc.cluster.local", "-p", "5432", "-t", "5"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        limits:
+          cpu: 100m
+          memory: 64Mi
+POD
+  "${KUBECTL[@]}" -n "$check_ns" wait pod/probe --for=jsonpath='{.status.phase}'=Succeeded --timeout=60s >/dev/null 2>&1 \
+    || "${KUBECTL[@]}" -n "$check_ns" wait pod/probe --for=jsonpath='{.status.phase}'=Failed --timeout=30s >/dev/null
+  local result
+  result="$("${KUBECTL[@]}" -n "$check_ns" logs probe)"
+  "${KUBECTL[@]}" delete namespace "$check_ns" --wait=false >/dev/null
+  if ! grep -q 'no response' <<<"$result"; then
+    echo "The database answered a pod outside the namespace: $result" >&2
+    exit 1
+  fi
+  echo "    blocked: $result"
 }
 
 smoke_test() {

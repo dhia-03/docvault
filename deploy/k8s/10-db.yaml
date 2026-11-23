@@ -1,5 +1,7 @@
 # PostgreSQL, mirroring the db service in docker-compose.yml.
-# Baseline version: no hardening. See F07 in docs/vulnerability-register.md.
+# Hardened (F07 fix): non-root with a high UID, read-only root filesystem, no
+# capabilities, default seccomp profile, no service account token, resource
+# limits, probes, password mounted as a file, image pinned by digest.
 apiVersion: v1
 kind: Service
 metadata:
@@ -18,6 +20,8 @@ kind: StatefulSet
 metadata:
   name: db
   namespace: docvault
+  annotations:
+    checkov.io/skip1: CKV_K8S_15=Exception E1 in docs/security-policy.md. Images are loaded into the cluster by deploy.sh, with no registry to pull from.
 spec:
   serviceName: db
   replicas: 1
@@ -29,9 +33,18 @@ spec:
       labels:
         app: db
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: postgres
-          image: postgres:17-alpine
+          image: postgres:17-alpine@sha256:f9cf3e1f0066f0eb0c48707d864f0ac5941e9ff454a072077d97a4d278d07d73
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5432
           env:
@@ -39,21 +52,56 @@ spec:
               value: docvault
             - name: POSTGRES_USER
               value: docvault
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: docvault-secrets
-                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_PASSWORD_FILE
+              value: /run/secrets/docvault/POSTGRES_PASSWORD
             # A subdirectory, because the volume root may contain lost+found.
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
           readinessProbe:
             exec:
               command: ["pg_isready", "-U", "docvault", "-d", "docvault"]
             periodSeconds: 3
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "docvault", "-d", "docvault"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
           volumeMounts:
             - name: db-data
               mountPath: /var/lib/postgresql/data
+            - name: secrets
+              mountPath: /run/secrets/docvault
+              readOnly: true
+            # Writable locations PostgreSQL needs with a read-only root filesystem.
+            - name: run
+              mountPath: /var/run/postgresql
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: secrets
+          secret:
+            secretName: docvault-secrets
+            defaultMode: 0440
+            items:
+              - key: POSTGRES_PASSWORD
+                path: POSTGRES_PASSWORD
+        - name: run
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
   volumeClaimTemplates:
     - metadata:
         name: db-data

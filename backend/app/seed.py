@@ -1,10 +1,9 @@
-"""Create the demo accounts. They use a test password from the environment."""
-
-import os
+"""Create the demo accounts. They use a test password from a secret."""
 
 from sqlalchemy import select
 
 from app.auth import hash_password
+from app.config import secret
 from app.db import SessionLocal
 from app.models import User
 
@@ -17,7 +16,7 @@ ACCOUNTS = (
 
 
 def main() -> None:
-    password = os.environ["SEED_PASSWORD"]
+    password = secret("SEED_PASSWORD")
     with SessionLocal() as session:
         for username, role in ACCOUNTS:
             exists = session.scalar(select(User).where(User.username == username))
