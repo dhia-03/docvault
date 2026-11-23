@@ -35,7 +35,7 @@ from app.auth import (
     session_serializer,
     verify_password,
 )
-from app.config import STORAGE_DIR
+from app.config import SESSION_COOKIE_SECURE, STORAGE_DIR
 from app.db import get_db
 from app.models import ROLES, AuditLog, Document, Share, User
 
@@ -47,6 +47,27 @@ session_serializer()
 
 app = FastAPI(title="DocVault", docs_url=None, redoc_url=None, openapi_url=None)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+
+# F03 fix, defense in depth: even if a script were injected, the browser
+# would refuse to run it, because only files from this site are allowed and
+# the pages have no inline scripts or styles.
+SECURITY_HEADERS = {
+    "Content-Security-Policy": (
+        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; "
+        "object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+    ),
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+}
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next) -> Response:
+    response = await call_next(request)
+    for name, value in SECURITY_HEADERS.items():
+        response.headers.setdefault(name, value)
+    return response
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
@@ -142,12 +163,14 @@ def login(
 
     audit(db, user.username, "login")
     response = redirect("/documents")
-    # VULN F03: without HttpOnly, injected scripts can read the session cookie.
+    # F03 fix: HttpOnly keeps the cookie away from page scripts, and Secure
+    # keeps it off plain HTTP (see SESSION_COOKIE_SECURE).
     response.set_cookie(
         SESSION_COOKIE,
         create_session(user),
         max_age=SESSION_MAX_AGE_SECONDS,
-        httponly=False,
+        httponly=True,
+        secure=SESSION_COOKIE_SECURE,
         samesite="lax",
     )
     return response
