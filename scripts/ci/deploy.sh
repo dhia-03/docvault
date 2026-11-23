@@ -7,7 +7,8 @@
 #         check that a non-compliant pod is rejected, build and load the
 #         images, deploy, check the network policies, then check that the app
 #         answers and that a test user can sign in.
-#         Needs POSTGRES_PASSWORD and SEED_PASSWORD in the environment.
+#         Needs POSTGRES_PASSWORD, SEED_PASSWORD and SECRET_KEY in the
+#         environment.
 #         The app is then reachable on http://127.0.0.1:$APP_TEST_PORT only.
 #   logs  print pod status, events and logs, for debugging a failed deploy
 #   down  delete the cluster
@@ -74,6 +75,7 @@ images_in() {
 
 up() {
   : "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}" "${SEED_PASSWORD:?Set SEED_PASSWORD}"
+  : "${SECRET_KEY:?Set SECRET_KEY (see .env.example)}"
 
   if "$KIND" get clusters 2>/dev/null | grep -qx "$CLUSTER"; then
     echo "==> Using existing kind cluster '$CLUSTER'"
@@ -125,6 +127,7 @@ KIND
   trap "rm -rf '$secret_dir'" EXIT
   printf '%s' "$POSTGRES_PASSWORD" > "$secret_dir/POSTGRES_PASSWORD"
   printf '%s' "$SEED_PASSWORD" > "$secret_dir/SEED_PASSWORD"
+  printf '%s' "$SECRET_KEY" > "$secret_dir/SECRET_KEY"
 
   echo "==> Deploying"
   "${KUBECTL[@]}" apply -f "$REPO_ROOT/deploy/k8s/00-namespace.yaml"
