@@ -14,6 +14,7 @@ from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy.orm import Session
 
 import app.config
+import app.main
 from app.auth import SESSION_COOKIE
 from app.models import Document
 
@@ -220,6 +221,39 @@ def test_f03_session_cookie_is_httponly(client, users):
     assert "httponly" in cookies[0].lower()
 
 
+def test_f03_session_cookie_is_secure_when_enabled(client, users, monkeypatch):
+    # The suite turns Secure off (plain-http test client); turn it back on.
+    monkeypatch.setattr(app.main, "SESSION_COOKIE_SECURE", True)
+    response = client.post(
+        "/login", data={"username": "alice", "password": TEST_PASSWORD}
+    )
+
+    assert response.status_code == 303
+    cookie = next(
+        value
+        for value in response.headers.get_list("set-cookie")
+        if value.startswith(f"{SESSION_COOKIE}=")
+    )
+    assert "; secure" in cookie.lower()
+
+
+def test_f03_secure_cookie_is_the_default():
+    # A fresh interpreter, because app.config is already imported here with
+    # SESSION_COOKIE_SECURE=false.
+    env = {k: v for k, v in os.environ.items() if k != "SESSION_COOKIE_SECURE"}
+    result = subprocess.run(
+        [sys.executable, "-c", "import app.config as c; print(c.SESSION_COOKIE_SECURE)"],
+        cwd=BACKEND_DIR,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "True"
+
+
 @pytest.mark.parametrize("path", ["/login", "/documents", "/healthz"])
 def test_f03_security_headers(login, path):
     alice = login("alice")
@@ -280,6 +314,18 @@ def test_f04_preview_by_id_works_for_owner(login):
 
     assert response.status_code == 200
     assert response.text == "line one\nline two\n"
+
+
+def test_f04_delete_removes_the_stored_file(login, storage_dir):
+    alice = login("alice")
+    document_id = upload(alice, "To delete", b"bye")
+    assert len(list(storage_dir.iterdir())) == 1
+
+    response = alice.post(f"/documents/{document_id}/delete")
+
+    assert response.status_code == 303
+    assert list(storage_dir.iterdir()) == []
+    assert alice.get(f"/documents/{document_id}").status_code == 404
 
 
 # F05: hard-coded signing key
