@@ -7,6 +7,11 @@
 # non-compliant workload is refused when it is applied, not later.
 # System namespaces are excluded: their components are managed by kind and
 # Kyverno themselves.
+# The falco namespace is excluded too. Falco is a node-level security agent:
+# to watch every container's system calls it must run privileged, as root,
+# with host paths (/proc, /sys/kernel, the containerd socket) mounted, which
+# these policies rightly refuse for workloads. Nothing else runs in that
+# namespace (deploy/falco/, installed by scripts/ci/deploy.sh).
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
@@ -27,7 +32,7 @@ spec:
       exclude:
         any:
           - resources:
-              namespaces: ["kube-system", "kyverno", "local-path-storage"]
+              namespaces: ["kube-system", "kyverno", "local-path-storage", "falco"]
       validate:
         failureAction: Enforce
         podSecurity:
@@ -54,7 +59,7 @@ spec:
       exclude:
         any:
           - resources:
-              namespaces: ["kube-system", "kyverno", "local-path-storage"]
+              namespaces: ["kube-system", "kyverno", "local-path-storage", "falco"]
       validate:
         failureAction: Enforce
         message: Every container must set securityContext.readOnlyRootFilesystem to true.
@@ -87,7 +92,7 @@ spec:
       exclude:
         any:
           - resources:
-              namespaces: ["kube-system", "kyverno", "local-path-storage"]
+              namespaces: ["kube-system", "kyverno", "local-path-storage", "falco"]
       validate:
         failureAction: Enforce
         message: Every container must set CPU and memory limits.
@@ -124,7 +129,7 @@ spec:
       exclude:
         any:
           - resources:
-              namespaces: ["kube-system", "kyverno", "local-path-storage"]
+              namespaces: ["kube-system", "kyverno", "local-path-storage", "falco"]
       validate:
         failureAction: Enforce
         message: Pods must set automountServiceAccountToken to false.

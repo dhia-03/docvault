@@ -3,18 +3,23 @@
 # demos. CI and local runs use this same script.
 #
 # Usage: scripts/ci/deploy.sh [up|logs|down]
-#   up    create the cluster if needed, install Kyverno and its policies,
-#         check that a non-compliant pod is rejected, build and load the
-#         images, deploy, check the network policies, then check that the app
-#         answers and that a test user can sign in.
+#   up    create the cluster if needed, build and load the images, install
+#         Kyverno and its policies, install Falco and the DocVault detection
+#         rules, check that a non-compliant pod is rejected, deploy, check the
+#         network policies, check that the app answers and that a test user
+#         can sign in, then check that Falco raised no DocVault alert during
+#         all of that.
 #         Needs POSTGRES_PASSWORD, SEED_PASSWORD and SECRET_KEY in the
 #         environment.
 #         The app is then reachable on http://127.0.0.1:$APP_TEST_PORT only.
 #   logs  print pod status, events and logs, for debugging a failed deploy
 #   down  delete the cluster
+#
+# KIND_CLUSTER names the cluster (default docvault), so a second cluster, on
+# another APP_TEST_PORT, can run next to the first one.
 set -euo pipefail
 
-CLUSTER="docvault"
+CLUSTER="${KIND_CLUSTER:-docvault}"
 NAMESPACE="docvault"
 APP_IMAGE="docvault-app:dev"
 APP_TEST_PORT="${APP_TEST_PORT:-18000}"
@@ -30,6 +35,20 @@ NODE_IMAGE="kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939
 # SHA-256 was recorded on first download (2026-11-23).
 KYVERNO_VERSION="v1.19.2"
 KYVERNO_SHA256="4f785937dc7fe49a0731108b15def1538923c73d9236255bc69d94d498037969"
+# Falco is installed by rendering its Helm chart with `helm template`. Helm's
+# checksum is the one published next to the release archive on get.helm.sh.
+# The chart's checksum is the digest listed for it in the chart repository's
+# index (https://falcosecurity.github.io/charts/index.yaml). The image is
+# pulled by its digest (the multi-platform index digest) and tagged on the
+# host, because an image referenced by digest in the manifest could not be
+# loaded into the cluster (see up()).
+HELM_VERSION="v4.3.1" # Released 2026-10-15.
+HELM_SHA256="0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b"
+FALCO_CHART_VERSION="9.2.2" # Released 2026-10-30, for Falco 0.45.2.
+FALCO_CHART_SHA256="b8a1aa984c3d513ab1639be760e6a07a9eb203d4da77a45a1512d382b6d3687d"
+FALCO_IMAGE="docker.io/falcosecurity/falco:0.45.2" # Released 2026-10-29.
+FALCO_IMAGE_DIGEST="sha256:1562a643953f938e02f47319b5214d93a235f11f646d60e9b8a516fd5a64698e"
+FALCO_NAMESPACE="falco"
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 TOOLS_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/docvault/bin"
@@ -64,6 +83,17 @@ setup_tools() {
     "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl")"
   KYVERNO_MANIFEST="$(fetch_file "kyverno-install-$KYVERNO_VERSION.yaml" "$KYVERNO_SHA256" \
     "https://github.com/kyverno/kyverno/releases/download/$KYVERNO_VERSION/install.yaml")"
+  FALCO_CHART="$(fetch_file "falco-chart-$FALCO_CHART_VERSION.tgz" "$FALCO_CHART_SHA256" \
+    "https://github.com/falcosecurity/charts/releases/download/falco-$FALCO_CHART_VERSION/falco-$FALCO_CHART_VERSION.tgz")"
+  local helm_archive
+  helm_archive="$(fetch_file "helm-$HELM_VERSION-linux-amd64.tar.gz" "$HELM_SHA256" \
+    "https://get.helm.sh/helm-$HELM_VERSION-linux-amd64.tar.gz")"
+  HELM="$TOOLS_DIR/helm-$HELM_VERSION"
+  if [ ! -x "$HELM" ]; then
+    tar -xzf "$helm_archive" -O linux-amd64/helm > "$HELM.tmp"
+    chmod +x "$HELM.tmp"
+    mv "$HELM.tmp" "$HELM"
+  fi
   # Always target this cluster, whatever the current kubectl context is.
   KUBECTL=("$KUBECTL_BIN" --context "kind-$CLUSTER")
 }
@@ -94,6 +124,21 @@ nodes:
 KIND
   fi
 
+  # Passwords go through files, not command-line arguments, so other
+  # processes cannot read them from the process list.
+  local work_dir secret_dir
+  work_dir="$(mktemp -d)"
+  # shellcheck disable=SC2064 # Expand now: work_dir is local to this function.
+  trap "rm -rf '$work_dir'" EXIT
+  secret_dir="$work_dir/secrets"
+  mkdir "$secret_dir"
+  printf '%s' "$POSTGRES_PASSWORD" > "$secret_dir/POSTGRES_PASSWORD"
+  printf '%s' "$SEED_PASSWORD" > "$secret_dir/SEED_PASSWORD"
+  printf '%s' "$SECRET_KEY" > "$secret_dir/SECRET_KEY"
+
+  local falco_manifest="$work_dir/falco.yaml"
+  render_falco "$falco_manifest" "$work_dir/helm"
+
   echo "==> Building $APP_IMAGE"
   docker build -t "$APP_IMAGE" "$REPO_ROOT/backend"
 
@@ -102,7 +147,8 @@ KIND
   # be unreliable (seen on WSL), and this also avoids registry rate limits.
   # Images pinned by digest are left for the cluster to pull, because it then
   # checks the digest; an exported copy gets a different digest and would not
-  # match the pin.
+  # match the pin. Falco's image is the exception: it is referenced by tag so
+  # that it can be loaded, and pulled here by its digest, which Docker checks.
   local image
   local images=("$APP_IMAGE")
   while read -r image; do
@@ -111,23 +157,23 @@ KIND
       echo "    $image: pulled and verified by the cluster"
       continue
     fi
-    docker pull --quiet --platform linux/amd64 "$image" >/dev/null
+    if [ "$image" = "$FALCO_IMAGE" ]; then
+      docker pull --quiet --platform linux/amd64 "${FALCO_IMAGE%:*}@$FALCO_IMAGE_DIGEST" >/dev/null
+      docker tag "${FALCO_IMAGE%:*}@$FALCO_IMAGE_DIGEST" "$FALCO_IMAGE"
+    else
+      docker pull --quiet --platform linux/amd64 "$image" >/dev/null
+    fi
     images+=("$image")
-  done < <(images_in "$REPO_ROOT"/deploy/k8s/*.yaml "$KYVERNO_MANIFEST")
+  done < <(images_in "$REPO_ROOT"/deploy/k8s/*.yaml "$KYVERNO_MANIFEST" "$falco_manifest")
   echo "==> Loading into the cluster: ${images[*]}"
   "$KIND" load docker-image --name "$CLUSTER" "${images[@]}"
 
   install_kyverno
-
-  # Passwords go through files, not command-line arguments, so other
-  # processes cannot read them from the process list.
-  local secret_dir
-  secret_dir="$(mktemp -d)"
-  # shellcheck disable=SC2064 # Expand now: secret_dir is local to this function.
-  trap "rm -rf '$secret_dir'" EXIT
-  printf '%s' "$POSTGRES_PASSWORD" > "$secret_dir/POSTGRES_PASSWORD"
-  printf '%s' "$SEED_PASSWORD" > "$secret_dir/SEED_PASSWORD"
-  printf '%s' "$SECRET_KEY" > "$secret_dir/SECRET_KEY"
+  # Before the application, so its whole start-up is watched.
+  install_falco "$falco_manifest"
+  # One second early, so an alert in the same second is not missed.
+  local falco_since
+  falco_since="$(date -u -d '-1 second' +%Y-%m-%dT%H:%M:%SZ)"
 
   echo "==> Deploying"
   "${KUBECTL[@]}" apply -f "$REPO_ROOT/deploy/k8s/00-namespace.yaml"
@@ -150,6 +196,69 @@ KIND
 
   check_network_policy
   smoke_test "$secret_dir/SEED_PASSWORD"
+  check_falco_quiet "$falco_since"
+}
+
+# Renders the Falco chart into a manifest, with the DocVault rules added as a
+# custom rules file. Helm only renders: it keeps no state in the cluster, and
+# its configuration and cache stay in a temporary directory.
+render_falco() {
+  local output="$1" helm_home="$2"
+  HELM_CONFIG_HOME="$helm_home/config" HELM_CACHE_HOME="$helm_home/cache" \
+    HELM_DATA_HOME="$helm_home/data" \
+    "$HELM" template falco "$FALCO_CHART" --namespace "$FALCO_NAMESPACE" \
+    --values "$REPO_ROOT/deploy/falco/values.yaml" \
+    --set "image.tag=${FALCO_IMAGE##*:}" \
+    --set-file "customRules.docvault_rules\.yaml=$REPO_ROOT/deploy/falco/docvault_rules.yaml" \
+    > "$output"
+  # Only the image verified in up() may be deployed.
+  local rendered
+  rendered="$(images_in "$output")"
+  if [ "$rendered" != "$FALCO_IMAGE" ]; then
+    echo "The Falco manifest uses unexpected images: $rendered" >&2
+    exit 1
+  fi
+}
+
+install_falco() {
+  local manifest="$1"
+  echo "==> Installing Falco ${FALCO_IMAGE##*:} (modern eBPF probe) and the DocVault rules"
+  "${KUBECTL[@]}" create namespace "$FALCO_NAMESPACE" --dry-run=client -o yaml \
+    | "${KUBECTL[@]}" apply -f - >/dev/null
+  "${KUBECTL[@]}" apply -f "$manifest" >/dev/null
+  "${KUBECTL[@]}" -n "$FALCO_NAMESPACE" rollout status daemonset/falco --timeout=300s
+  # Ready only means Falco's web server answers. Wait until the probe is
+  # attached, so the deploy below is watched from its start.
+  local attempt log=""
+  for attempt in $(seq 30); do
+    log="$("${KUBECTL[@]}" -n "$FALCO_NAMESPACE" logs daemonset/falco -c falco --tail=-1 2>/dev/null || true)"
+    if grep -q "Opening 'syscall' source with modern BPF probe" <<<"$log"; then break; fi
+    if [ "$attempt" -eq 30 ]; then
+      echo "Falco did not start its modern eBPF probe:" >&2
+      tail -n 30 <<<"$log" >&2
+      exit 1
+    fi
+    sleep 2
+  done
+  grep -E "Opening 'syscall' source|docvault_rules.yaml" <<<"$log" | sed -E 's/^[^ ]+: /    /' | sort -u
+}
+
+# Proves the rules are quiet on normal activity: the deploy (init container,
+# database initialisation, migrations, seeding), the checks and the smoke
+# test must not raise any DocVault alert.
+check_falco_quiet() {
+  local since="$1" alerts
+  echo "==> Falco: no DocVault alert during the deploy and the smoke test"
+  # Alerts reach the log within a second or two.
+  sleep 5
+  alerts="$("${KUBECTL[@]}" -n "$FALCO_NAMESPACE" logs -l app.kubernetes.io/name=falco -c falco \
+    --since-time="$since" --tail=-1 | grep -F '"rule":"DV-R' || true)"
+  if [ -n "$alerts" ]; then
+    echo "Falco raised DocVault alerts during a normal deploy (false positives):" >&2
+    echo "$alerts" >&2
+    exit 1
+  fi
+  echo "    no DV-R alert since $since"
 }
 
 install_kyverno() {
@@ -274,6 +383,8 @@ logs() {
   "${KUBECTL[@]}" -n "$NAMESPACE" get events --sort-by=.lastTimestamp || true
   "${KUBECTL[@]}" -n "$NAMESPACE" logs deployment/docvault --tail=100 || true
   "${KUBECTL[@]}" -n "$NAMESPACE" logs statefulset/db --tail=50 || true
+  "${KUBECTL[@]}" -n "$FALCO_NAMESPACE" get pods -o wide || true
+  "${KUBECTL[@]}" -n "$FALCO_NAMESPACE" logs daemonset/falco -c falco --tail=100 || true
 }
 
 down() {
