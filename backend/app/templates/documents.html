@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Documents - DocVault{% endblock %}
+{% block content %}
+<h1>Documents</h1>
+
+<form class="row" method="get" action="/documents">
+  <label>Search titles <input name="q" value="{{ q }}"></label>
+  <button>Search</button>
+</form>
+
+{# F03 fix: no |safe filter, so Jinja escapes the search term. #}
+{% if q %}<p>Results for: {{ q }}</p>{% endif %}
+
+<table>
+  <thead><tr><th>Title</th><th>File</th><th>Added</th></tr></thead>
+  <tbody>
+    {% for document in documents %}
+    <tr>
+      <td><a href="/documents/{{ document.id }}">{{ document.title }}</a></td>
+      <td>{{ document.filename }}</td>
+      <td>{{ document.created_at }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="3">No documents found.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Upload a document</h2>
+<form class="stack" method="post" action="/documents" enctype="multipart/form-data">
+  <label>Title <input name="title" required maxlength="255"></label>
+  <label>File <input name="file" type="file" required></label>
+  <button>Upload</button>
+</form>
+{% endblock %}

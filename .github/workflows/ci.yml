@@ -43,3 +43,77 @@ jobs:
         with:
           persist-credentials: false
       - run: bash scripts/ci/scan.sh trivy
+
+  image:
+    name: Image scan (Trivy)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: bash scripts/ci/scan.sh image
+
+  checkov:
+    name: IaC scan (Checkov)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: bash scripts/ci/scan.sh checkov
+
+  # Regression tests for the planted flaws, on SQLite, with no deployment.
+  tests:
+    name: Tests (pytest)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: python -m pip install -r backend/requirements.txt -r backend/requirements-dev.txt
+      - name: Run tests
+        run: python -m pytest backend/tests -q
+
+  # Deploys to a throwaway kind cluster on the runner, then runs an
+  # authenticated ZAP scan against it. Both run in one job because the
+  # cluster only exists on this runner. The job does not wait for the static
+  # checks: the environment is isolated and deleted with the runner, so the
+  # vulnerable baseline can still be tested dynamically. Merging into main
+  # still requires every check to pass.
+  dast:
+    name: DAST (ZAP)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Generate throwaway test passwords and signing key
+        run: |
+          for name in POSTGRES_PASSWORD SEED_PASSWORD SECRET_KEY; do
+            value="$(openssl rand -hex 24)"
+            echo "::add-mask::$value"
+            echo "$name=$value" >> "$GITHUB_ENV"
+          done
+      - name: Deploy to kind
+        run: bash scripts/ci/deploy.sh up
+      - name: Authenticated ZAP scan
+        run: bash scripts/ci/dast.sh
+      - name: Show cluster state
+        if: failure()
+        run: bash scripts/ci/deploy.sh logs
+      - name: Keep the ZAP reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: zap-report
+          path: reports/zap/
+          if-no-files-found: ignore
+          retention-days: 90

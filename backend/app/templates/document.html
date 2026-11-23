@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Document - DocVault{% endblock %}
+{% block content %}
+{# F03 fix: no |safe filter, so Jinja escapes the stored title. #}
+<h1>{{ document.title }}</h1>
+<dl>
+  <dt>Owner</dt><dd>{{ document.owner.username }}</dd>
+  <dt>File</dt><dd>{{ document.filename }}</dd>
+  <dt>Tags</dt><dd id="tags">{{ document.tags or "None" }}</dd>
+</dl>
+<p>
+  <a href="/documents/{{ document.id }}/download">Download</a> ·
+  <a href="/documents/{{ document.id }}/preview">Preview</a>
+</p>
+
+{% if document.owner_id == user.id %}
+<h2>Share</h2>
+<form class="row" method="post" action="/documents/{{ document.id }}/share">
+  <label>Username <input name="username" required></label>
+  <button>Share</button>
+</form>
+
+<h2>Metadata (YAML)</h2>
+<form class="stack" method="post" action="/documents/{{ document.id }}/metadata">
+  <label>Metadata <textarea name="metadata" rows="4" placeholder="tags: [finance, 2026]"></textarea></label>
+  <button>Save metadata</button>
+</form>
+
+<h2>Delete</h2>
+<form method="post" action="/documents/{{ document.id }}/delete">
+  <button class="danger">Delete document</button>
+</form>
+{% endif %}
+{% endblock %}

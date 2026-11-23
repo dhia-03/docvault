@@ -1,0 +1,221 @@
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	﻿2026-11-22T20:17:31.0531714Z ##[group]Run bash scripts/ci/scan.sh semgrep
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.0532633Z bash scripts/ci/scan.sh semgrep
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.0554220Z shell: /usr/bin/bash -e {0}
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.0554915Z ##[endgroup]
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.0669696Z ==> Semgrep: source code
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.1514904Z Unable to find image 'semgrep/semgrep:1.182.0@sha256:4a34048c04fef049f71665047f074cffb00cc3d89482f965a5cd151d589237af' locally
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.5818697Z docker.io/semgrep/semgrep@sha256:4a34048c04fef049f71665047f074cffb00cc3d89482f965a5cd151d589237af: Pulling from semgrep/semgrep
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7376440Z d0c1d894c237: Pulling fs layer
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7380850Z d253fcead286: Pulling fs layer
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7381680Z bd9ddc54bea9: Pulling fs layer
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7382404Z 487c2c3218ff: Pulling fs layer
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7382949Z 661e55686668: Pulling fs layer
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7383528Z 1fcf153e6190: Pulling fs layer
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7383944Z e3d922d183f4: Pulling fs layer
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7384685Z 292e6dbbd026: Pulling fs layer
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7385245Z af39c86faa63: Pulling fs layer
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7385592Z c15dfb9ac58b: Pulling fs layer
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7385762Z 8f3364d78154: Pulling fs layer
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7385974Z 7cf37d3e1f88: Pulling fs layer
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7386132Z aadeadbbf5bd: Pulling fs layer
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7386292Z 292e6dbbd026: Waiting
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7386453Z af39c86faa63: Waiting
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7386876Z c15dfb9ac58b: Waiting
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7387020Z 487c2c3218ff: Waiting
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7387148Z 661e55686668: Waiting
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7387273Z 1fcf153e6190: Waiting
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7387478Z e3d922d183f4: Waiting
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7387612Z 8f3364d78154: Waiting
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7387736Z 7cf37d3e1f88: Waiting
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.7387866Z aadeadbbf5bd: Waiting
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.8865728Z bd9ddc54bea9: Download complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.9611606Z d0c1d894c237: Verifying Checksum
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:31.9615125Z d0c1d894c237: Download complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:32.0780986Z d253fcead286: Verifying Checksum
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:32.0781316Z d253fcead286: Download complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:32.1140847Z d0c1d894c237: Pull complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:32.1566272Z 487c2c3218ff: Verifying Checksum
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:32.1574605Z 487c2c3218ff: Download complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:32.4773686Z e3d922d183f4: Verifying Checksum
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:32.4843368Z e3d922d183f4: Download complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:32.6701394Z 292e6dbbd026: Verifying Checksum
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:32.6702467Z 292e6dbbd026: Download complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:32.9078312Z af39c86faa63: Verifying Checksum
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:32.9078881Z af39c86faa63: Download complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:32.9432325Z 661e55686668: Verifying Checksum
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:32.9433356Z 661e55686668: Download complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:33.0395706Z 1fcf153e6190: Download complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:33.0642844Z c15dfb9ac58b: Verifying Checksum
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:33.0643914Z c15dfb9ac58b: Download complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:33.0985572Z 8f3364d78154: Verifying Checksum
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:33.0987031Z 8f3364d78154: Download complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:33.1881262Z aadeadbbf5bd: Verifying Checksum
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:33.1882659Z aadeadbbf5bd: Download complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:33.2041487Z 7cf37d3e1f88: Verifying Checksum
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:33.2042003Z 7cf37d3e1f88: Download complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:39.9784141Z d253fcead286: Pull complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:40.0098098Z bd9ddc54bea9: Pull complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:40.0672771Z 487c2c3218ff: Pull complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:42.2723271Z 661e55686668: Pull complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:46.2442757Z 1fcf153e6190: Pull complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:53.2382178Z e3d922d183f4: Pull complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:53.2497281Z 292e6dbbd026: Pull complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:53.2671014Z af39c86faa63: Pull complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:53.2854714Z c15dfb9ac58b: Pull complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:53.2996325Z 8f3364d78154: Pull complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:53.3096297Z 7cf37d3e1f88: Pull complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:53.3217769Z aadeadbbf5bd: Pull complete
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:53.3272495Z Digest: sha256:4a34048c04fef049f71665047f074cffb00cc3d89482f965a5cd151d589237af
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:53.3280409Z Status: Downloaded newer image for semgrep/semgrep@sha256:4a34048c04fef049f71665047f074cffb00cc3d89482f965a5cd151d589237af
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:55.9586537Z                
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:55.9587284Z                
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:55.9587960Z ┌─────────────┐
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:55.9588557Z │ Scan Status │
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:55.9594372Z └─────────────┘
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:55.9600164Z   Scanning 42 files tracked by git with 334 Code rules:
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:55.9655213Z                                                                                                                         
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:55.9656310Z   Language      Rules   Files          Origin      Rules                                                                
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:55.9657354Z  ─────────────────────────────        ───────────────────                                                               
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:55.9657966Z   <multilang>      45      42          Community     334                                                                
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:55.9658441Z   python           96      10                                                                                           
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:55.9658865Z   yaml              9       2                                                                                           
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:55.9659294Z   dockerfile        4       1                                                                                           
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:55.9659711Z                                                                                                                         
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4905199Z                    
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4905827Z                    
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4930238Z ┌─────────────────┐
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4930553Z │ 2 Code Findings │
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4930789Z └─────────────────┘
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4930984Z                             
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4931268Z     /repo/backend/Dockerfile
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4931625Z    ❯❯❱ dockerfile.security.missing-user.missing-user
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4931963Z           ❰❰ Blocking ❱❱
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4932351Z           By not specifying a USER, a program in the container may run as 'root'. This is a security hazard.
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4932942Z           If an attacker can control a process running as root, they may have control over the container.   
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4933514Z           Ensure that the last USER in a Dockerfile is a USER other than 'root'.                            
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4934572Z           Details: https://sg.run/Gbvn                                                                      
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4934999Z                                                                                                             
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4935644Z            ▶▶┆ Autofix ▶ USER non-root CMD ["sh", "-c", "alembic upgrade head && python -m app.seed && exec uvicorn
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4936232Z               app.main:app --host 0.0.0.0 --port 8000"]                                                            
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4937032Z            10┆ CMD ["sh", "-c", "alembic upgrade head && python -m app.seed && exec uvicorn app.main:app
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4937533Z                --host 0.0.0.0 --port 8000"]                                                             
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4937910Z                              
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4938135Z     /repo/backend/app/main.py
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4938612Z    ❯❯❱ python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4939098Z           ❰❰ Blocking ❱❱
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4939514Z           sqlalchemy.text passes the constructed SQL statement to the database mostly unchanged. This means  
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4940149Z           that the usual SQL injection protections are not applied and this function is vulnerable to SQL    
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4941094Z           injection if user input can reach here. Use normal SQLAlchemy operators (such as `or_()`, `and_()`,
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4941616Z           etc.) to construct SQL.                                                                            
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4942088Z           Details: https://sg.run/yP1O                                                                       
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4942519Z                                                                                                              
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4942974Z           159┆ documents = db.execute(text(query)).mappings().all()
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4943224Z 
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4982150Z                 
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4982657Z                 
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4985053Z ┌──────────────┐
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4986576Z │ Scan Summary │
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4987187Z └──────────────┘
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4989776Z ✅ Scan completed successfully.
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4990268Z  • Findings: 2 (2 blocking)
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4990972Z  • Rules run: 153
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4991436Z  • Targets scanned: 42
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4992229Z  • Parsed lines: ~100.0%
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.4992670Z  • Scan was limited to files tracked by git
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.5019498Z  • For a detailed list of skipped files and lines, run semgrep with the --verbose flag
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.5024223Z Ran 153 rules on 42 files: 2 findings.
+SAST (Semgrep)	Run bash scripts/ci/scan.sh semgrep	2026-11-22T20:17:56.7757280Z ##[error]Process completed with exit code 1.
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	﻿2026-11-22T20:17:31.6938478Z ##[group]Run bash scripts/ci/scan.sh gitleaks
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:31.6940041Z bash scripts/ci/scan.sh gitleaks
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:31.6966341Z shell: /usr/bin/bash -e {0}
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:31.6967487Z ##[endgroup]
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:31.7127197Z ==> Gitleaks: working tree
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:31.8131305Z Unable to find image 'zricethezav/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f' locally
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.0091724Z docker.io/zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f: Pulling from zricethezav/gitleaks
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.0928751Z d49a2dee86fb: Pulling fs layer
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.0931051Z d92b655ae8e2: Pulling fs layer
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.0931698Z 61fdfd7c0175: Pulling fs layer
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.0932755Z a43ab0c74cc4: Pulling fs layer
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.0936073Z a43ab0c74cc4: Waiting
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.1856419Z d49a2dee86fb: Verifying Checksum
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.1863157Z d49a2dee86fb: Download complete
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.2185889Z d92b655ae8e2: Verifying Checksum
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.2205699Z d92b655ae8e2: Download complete
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.2538123Z 61fdfd7c0175: Verifying Checksum
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.2541953Z 61fdfd7c0175: Download complete
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.2758880Z a43ab0c74cc4: Verifying Checksum
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.2772166Z a43ab0c74cc4: Download complete
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.4357411Z d49a2dee86fb: Pull complete
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.7459208Z d92b655ae8e2: Pull complete
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.9192976Z 61fdfd7c0175: Pull complete
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.9342601Z a43ab0c74cc4: Pull complete
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.9384946Z Digest: sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:32.9392958Z Status: Downloaded newer image for zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:33.1457382Z Finding:     SECRET_KEY = "REDACTED"
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:33.1465835Z Secret:      REDACTED
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:33.1467212Z RuleID:      generic-api-key
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:33.1468276Z Entropy:     5.103056
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:33.1468886Z File:        /repo/backend/app/config.py
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:33.1469480Z Line:        9
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:33.1478220Z Fingerprint: /repo/backend/app/config.py:generic-api-key:9
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:33.1480310Z 
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:33.1828112Z 8:17PM INF scanned ~72870 bytes (72.87 KB) in 51.2ms
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:33.1829312Z 8:17PM WRN leaks found: 1
+Secret scan (Gitleaks)	Run bash scripts/ci/scan.sh gitleaks	2026-11-22T20:17:33.2446489Z ##[error]Process completed with exit code 1.
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	﻿2026-11-22T20:17:31.6215632Z ##[group]Run bash scripts/ci/scan.sh trivy
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:31.6216313Z bash scripts/ci/scan.sh trivy
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:31.6231695Z shell: /usr/bin/bash -e {0}
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:31.6232316Z ##[endgroup]
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:31.6325109Z ==> Trivy: dependencies
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:31.7001115Z Unable to find image 'aquasec/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c' locally
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:32.1494207Z docker.io/aquasec/trivy@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c: Pulling from aquasec/trivy
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:32.3043356Z e2de96513ba9: Already exists
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:32.3076898Z 6b85eccf6d37: Pulling fs layer
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:32.3078319Z 2e51b4bff2eb: Pulling fs layer
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:32.4587625Z 7982da00fb0e: Pulling fs layer
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:32.4588611Z 7982da00fb0e: Download complete
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:32.5548416Z 6b85eccf6d37: Verifying Checksum
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:32.5553734Z 6b85eccf6d37: Download complete
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:32.6826286Z 2e51b4bff2eb: Verifying Checksum
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:32.6828868Z 2e51b4bff2eb: Download complete
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:34.1399421Z 6b85eccf6d37: Pull complete
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:36.6576699Z 2e51b4bff2eb: Pull complete
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:36.6813551Z 7982da00fb0e: Pull complete
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:36.6879506Z Digest: sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:36.6895236Z Status: Downloaded newer image for aquasec/trivy@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:36.9150005Z 2026-11-22T20:17:36Z	INFO	[vulndb] Need to update DB
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:36.9151452Z 2026-11-22T20:17:36Z	INFO	[vulndb] Downloading vulnerability DB...
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:36.9157087Z 2026-11-22T20:17:36Z	INFO	[vulndb] Downloading artifact...	repo="mirror.gcr.io/aquasec/trivy-db:2"
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:45.9711892Z 2026-11-22T20:17:45Z	INFO	[vulndb] Artifact successfully downloaded	repo="mirror.gcr.io/aquasec/trivy-db:2"
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1407871Z 2026-11-22T20:17:46Z	INFO	[vuln] Vulnerability scanning is enabled
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1551943Z 2026-11-22T20:17:46Z	WARN	[pip] Unable to find python `site-packages` directory. License detection is skipped.	err="unable to find path to Python executable"
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1552745Z 2026-11-22T20:17:46Z	INFO	Number of language-specific files	num=1
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1553299Z 2026-11-22T20:17:46Z	INFO	[pip] Detecting vulnerabilities...
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1598601Z 
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1599598Z Report Summary
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1600053Z 
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1601049Z ┌──────────────────────────┬──────┬─────────────────┐
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1602342Z │          Target          │ Type │ Vulnerabilities │
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1603108Z ├──────────────────────────┼──────┼─────────────────┤
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1603972Z │ backend/requirements.txt │ pip  │        2        │
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1604689Z └──────────────────────────┴──────┴─────────────────┘
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1605306Z Legend:
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1605893Z - '-': Not scanned
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1606537Z - '0': Clean (no security findings detected)
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1607160Z 
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1607338Z 
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1607919Z backend/requirements.txt (pip)
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1608473Z ==============================
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1608941Z Total: 2 (HIGH: 0, CRITICAL: 2)
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1609323Z 
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1611024Z ┌─────────┬────────────────┬──────────┬────────┬───────────────────┬───────────────┬─────────────────────────────────────────────┐
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1612542Z │ Library │ Vulnerability  │ Severity │ Status │ Installed Version │ Fixed Version │                    Title                    │
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1614081Z ├─────────┼────────────────┼──────────┼────────┼───────────────────┼───────────────┼─────────────────────────────────────────────┤
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1615544Z │ pyyaml  │ CVE-2020-14343 │ CRITICAL │ fixed  │ 5.3               │ 5.4           │ PyYAML: incomplete fix for CVE-2020-1747    │
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1616693Z │         │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2020-14343  │
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1618480Z │         ├────────────────┤          │        │                   ├───────────────┼─────────────────────────────────────────────┤
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1619655Z │         │ CVE-2020-1747  │          │        │                   │ 5.3.1         │ PyYAML: arbitrary command execution through │
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1620644Z │         │                │          │        │                   │               │ python/object/new when FullLoader is used   │
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1621585Z │         │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2020-1747   │
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:46.1622864Z └─────────┴────────────────┴──────────┴────────┴───────────────────┴───────────────┴─────────────────────────────────────────────┘
+Dependency scan (Trivy)	Run bash scripts/ci/scan.sh trivy	2026-11-22T20:17:59.0967358Z ##[error]Process completed with exit code 1.

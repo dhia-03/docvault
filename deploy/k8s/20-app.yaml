@@ -1,0 +1,166 @@
+# DocVault application, mirroring the app service in docker-compose.yml.
+# Hardened (F07 fix): non-root with a high UID, read-only root filesystem, no
+# capabilities, default seccomp profile, no service account token, resource
+# limits, probes, and secrets mounted as files. An init container waits for
+# the database and runs migrations, so the app no longer crash-loops.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: documents
+  namespace: docvault
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docvault
+  namespace: docvault
+  annotations:
+    checkov.io/skip1: CKV_K8S_15=Exception E1 in docs/security-policy.md. Images are loaded into the cluster by deploy.sh, with no registry to pull from.
+    checkov.io/skip2: CKV_K8S_43=Exception E2 in docs/security-policy.md. The app image is built locally for each run, so it has no registry digest.
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: docvault
+  template:
+    metadata:
+      labels:
+        app: docvault
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: prepare
+          image: docvault-app:dev
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "python -m app.wait_for_db && alembic upgrade head && python -m app.seed"]
+          env:
+            - name: DATABASE_URL
+              value: postgresql+psycopg://docvault@db:5432/docvault
+            - name: DATABASE_PASSWORD_FILE
+              value: /run/secrets/docvault/POSTGRES_PASSWORD
+            - name: SEED_PASSWORD_FILE
+              value: /run/secrets/docvault/SEED_PASSWORD
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: prepare-secrets
+              mountPath: /run/secrets/docvault
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      containers:
+        - name: app
+          # Built locally and loaded into the cluster; see deploy/README.md.
+          image: docvault-app:dev
+          imagePullPolicy: IfNotPresent
+          command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DATABASE_URL
+              value: postgresql+psycopg://docvault@db:5432/docvault
+            - name: DATABASE_PASSWORD_FILE
+              value: /run/secrets/docvault/POSTGRES_PASSWORD
+            - name: SECRET_KEY_FILE
+              value: /run/secrets/docvault/SECRET_KEY
+            # The test cluster is reached over plain HTTP. A deployment behind
+            # HTTPS must remove this, so the cookie gets the Secure flag.
+            - name: SESSION_COOKIE_SECURE
+              value: "false"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          volumeMounts:
+            # Mounted on the documents directory itself: unlike a Docker named
+            # volume, a new Kubernetes volume is not filled from the image, so
+            # mounting it on /data would hide /data/documents.
+            - name: documents
+              mountPath: /data/documents
+            - name: app-secrets
+              mountPath: /run/secrets/docvault
+              readOnly: true
+            # Uploads are buffered in /tmp, which the read-only root does not allow.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: documents
+          persistentVolumeClaim:
+            claimName: documents
+        # Each container only gets the secrets it uses: the app does not need
+        # the seed password, and the init container does not need the
+        # session signing key.
+        - name: app-secrets
+          secret:
+            secretName: docvault-secrets
+            defaultMode: 0440
+            items:
+              - key: POSTGRES_PASSWORD
+                path: POSTGRES_PASSWORD
+              - key: SECRET_KEY
+                path: SECRET_KEY
+        - name: prepare-secrets
+          secret:
+            secretName: docvault-secrets
+            defaultMode: 0440
+            items:
+              - key: POSTGRES_PASSWORD
+                path: POSTGRES_PASSWORD
+              - key: SEED_PASSWORD
+                path: SEED_PASSWORD
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docvault
+  namespace: docvault
+spec:
+  selector:
+    app: docvault
+  ports:
+    - port: 8000
+      targetPort: 8000

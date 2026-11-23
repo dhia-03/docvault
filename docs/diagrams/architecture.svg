@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" font-family="Inter, 'Segoe UI', Arial, sans-serif">
+  <title>Architecture DocVault</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#5b6478"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="60" y="72" font-size="40" font-weight="700" fill="#13213c">Architecture DocVault</text>
+  <text x="60" y="110" font-size="22" fill="#5b6478">Du commit à la détection d'attaque</text>
+
+  <!-- Connectors -->
+  <g fill="none" stroke="#5b6478" stroke-width="2.5">
+    <path d="M340 225H396" marker-end="url(#arrow)"/>
+    <path d="M1200 225H1256" marker-end="url(#arrow)"/>
+    <path d="M800 300V366" marker-end="url(#arrow)"/>
+    <path d="M1260 455H1204" marker-end="url(#arrow)"/>
+    <path d="M1200 680H1256" marker-end="url(#arrow)"/>
+    <path d="M1400 770V796" marker-end="url(#arrow)"/>
+  </g>
+  <text x="1230" y="206" font-size="16" fill="#5b6478" text-anchor="middle">échec</text>
+  <text x="816" y="342" font-size="18" fill="#5b6478">image approuvée</text>
+
+  <!-- 1. GitHub repository -->
+  <rect x="60" y="150" width="280" height="150" rx="14" fill="#ffffff" stroke="#13213c" stroke-width="2"/>
+  <text x="200" y="202" font-size="26" font-weight="700" fill="#13213c" text-anchor="middle">Dépôt GitHub</text>
+  <text x="200" y="238" font-size="20" fill="#3c4558" text-anchor="middle">Code FastAPI</text>
+  <text x="200" y="266" font-size="20" fill="#3c4558" text-anchor="middle">Fichiers Kubernetes</text>
+
+  <!-- 2. CI blocking stage -->
+  <rect x="400" y="150" width="800" height="150" rx="14" fill="#eef1f8" stroke="#13213c" stroke-width="2"/>
+  <text x="420" y="188" font-size="24" font-weight="700" fill="#13213c">GitHub Actions · étape de sécurité bloquante</text>
+  <g font-size="18" text-anchor="middle">
+    <rect x="420" y="208" width="144" height="76" rx="10" fill="#13213c"/>
+    <text x="492" y="240" font-weight="700" fill="#ffffff">Code</text>
+    <text x="492" y="266" fill="#b9c3d8">Semgrep</text>
+    <rect x="574" y="208" width="144" height="76" rx="10" fill="#13213c"/>
+    <text x="646" y="240" font-weight="700" font-size="16" fill="#ffffff">Dépendances</text>
+    <text x="646" y="266" fill="#b9c3d8">Trivy</text>
+    <rect x="728" y="208" width="144" height="76" rx="10" fill="#13213c"/>
+    <text x="800" y="240" font-weight="700" fill="#ffffff">Secrets</text>
+    <text x="800" y="266" fill="#b9c3d8">Gitleaks</text>
+    <rect x="882" y="208" width="144" height="76" rx="10" fill="#13213c"/>
+    <text x="954" y="240" font-weight="700" fill="#ffffff">Image</text>
+    <text x="954" y="266" fill="#b9c3d8">Trivy</text>
+    <rect x="1036" y="208" width="144" height="76" rx="10" fill="#13213c"/>
+    <text x="1108" y="240" font-weight="700" fill="#ffffff">Manifests</text>
+    <text x="1108" y="266" fill="#b9c3d8">Checkov</text>
+  </g>
+
+  <!-- 3. Build blocked -->
+  <rect x="1260" y="150" width="280" height="150" rx="14" fill="#fdecea" stroke="#d64545" stroke-width="2.5"/>
+  <text x="1400" y="208" font-size="26" font-weight="700" fill="#13213c" text-anchor="middle">Build bloqué</text>
+  <text x="1400" y="244" font-size="20" fill="#3c4558" text-anchor="middle">Rien n'est déployé</text>
+  <text x="1400" y="272" font-size="20" fill="#3c4558" text-anchor="middle">L'échec sert de preuve</text>
+
+  <!-- 4. Kubernetes cluster -->
+  <rect x="60" y="370" width="1140" height="400" rx="16" fill="#f4f6fa" stroke="#13213c" stroke-width="2"/>
+  <text x="80" y="406" font-size="24" font-weight="700" fill="#13213c">Cluster Kubernetes (Minikube)</text>
+
+  <rect x="80" y="420" width="1100" height="60" rx="10" fill="#fdf0eb" stroke="#e8745a" stroke-width="2"/>
+  <text x="100" y="457" font-size="20" fill="#13213c"><tspan font-weight="700">Kyverno</tspan> : rejette toute charge non durcie (root, privilégiée, sans limites)</text>
+
+  <rect x="80" y="496" width="1100" height="258" rx="12" fill="none" stroke="#5b6478" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="100" y="530" font-size="20" font-weight="700" fill="#3c4558">Namespace docvault · réseau en refus par défaut</text>
+
+  <g text-anchor="middle">
+    <rect x="100" y="550" width="250" height="170" rx="12" fill="#ffffff" stroke="#5b6478" stroke-width="2"/>
+    <text x="225" y="596" font-size="24" font-weight="700" fill="#13213c">Secrets</text>
+    <text x="225" y="632" font-size="19" fill="#3c4558">Mot de passe BD,</text>
+    <text x="225" y="658" font-size="19" fill="#3c4558">clé de signature</text>
+    <text x="225" y="684" font-size="19" fill="#3c4558">injectés à l'exécution</text>
+
+    <rect x="370" y="550" width="250" height="170" rx="12" fill="#e6f7f4" stroke="#2bb5a0" stroke-width="3"/>
+    <text x="495" y="596" font-size="24" font-weight="700" fill="#13213c">DocVault</text>
+    <text x="495" y="632" font-size="19" fill="#3c4558">FastAPI</text>
+    <text x="495" y="658" font-size="19" fill="#3c4558">non-root</text>
+    <text x="495" y="684" font-size="19" fill="#3c4558">lecture seule</text>
+
+    <rect x="640" y="550" width="250" height="170" rx="12" fill="#ffffff" stroke="#5b6478" stroke-width="2"/>
+    <text x="765" y="596" font-size="24" font-weight="700" fill="#13213c">PostgreSQL</text>
+    <text x="765" y="632" font-size="19" fill="#3c4558">Utilisateurs,</text>
+    <text x="765" y="658" font-size="19" fill="#3c4558">partages,</text>
+    <text x="765" y="684" font-size="19" fill="#3c4558">journal d'audit</text>
+
+    <rect x="910" y="550" width="250" height="170" rx="12" fill="#ffffff" stroke="#5b6478" stroke-width="2"/>
+    <text x="1035" y="596" font-size="24" font-weight="700" fill="#13213c">Stockage</text>
+    <text x="1035" y="632" font-size="19" fill="#3c4558">Documents</text>
+    <text x="1035" y="658" font-size="19" fill="#3c4558">confidentiels</text>
+  </g>
+
+  <!-- 5. DAST -->
+  <rect x="1260" y="370" width="280" height="170" rx="14" fill="#ffffff" stroke="#13213c" stroke-width="2"/>
+  <g text-anchor="middle">
+    <text x="1400" y="416" font-size="26" font-weight="700" fill="#13213c">OWASP ZAP</text>
+    <text x="1400" y="452" font-size="20" fill="#3c4558">Scan authentifié</text>
+    <text x="1400" y="479" font-size="20" fill="#3c4558">après déploiement</text>
+    <text x="1400" y="506" font-size="20" fill="#3c4558">≥ 2 failles confirmées</text>
+  </g>
+
+  <!-- 6. Observability -->
+  <rect x="1260" y="590" width="280" height="180" rx="14" fill="#ffffff" stroke="#13213c" stroke-width="2"/>
+  <g text-anchor="middle">
+    <text x="1400" y="636" font-size="26" font-weight="700" fill="#13213c">Observabilité</text>
+    <text x="1400" y="672" font-size="20" fill="#3c4558">Prometheus · Loki</text>
+    <text x="1400" y="699" font-size="20" fill="#3c4558">Grafana</text>
+    <text x="1400" y="734" font-size="20" font-weight="700" fill="#1f8f7e">Détection d'attaque</text>
+  </g>
+
+  <!-- Connectors inside the namespace, drawn above the boxes -->
+  <g fill="none" stroke="#5b6478" stroke-width="2.5">
+    <path d="M350 635H366" marker-end="url(#arrow)"/>
+    <path d="M620 635H636" marker-end="url(#arrow)"/>
+    <path d="M495 720V738H1035V724" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- 7. Incident response -->
+  <rect x="60" y="800" width="1480" height="70" rx="14" fill="#13213c"/>
+  <text x="800" y="843" font-size="22" fill="#ffffff" text-anchor="middle"><tspan font-weight="700">Plan de réponse :</tspan> Détecter → Contenir → Éradiquer → Rétablir → Apprendre</text>
+</svg>

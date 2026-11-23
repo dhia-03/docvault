@@ -17,6 +17,15 @@ The project is in early development. See [docs/DEVELOPMENT_PROGRESS.md](docs/DEV
 | `docs/` | Threat model, security policy and project records |
 | `.github/workflows/` | CI pipeline |
 
+## Run locally
+
+```bash
+cp .env.example .env   # then set local test passwords
+docker compose up -d --build
+```
+
+The application listens on `127.0.0.1` at the port set by `APP_PORT`. The demo accounts are `admin`, `alice`, `bob` and `auditor`, and they all use `SEED_PASSWORD`. Stop it with `docker compose down`.
+
 ## Security checks
 
 Every push to `main` and every pull request runs the scanners below. Run the same checks locally with Docker:
@@ -30,5 +39,6 @@ The blocking rules and their justification are in [docs/security-policy.md](docs
 ## Project documents
 
 - [Threat model](docs/threat-model.md)
+- [Vulnerability register](docs/vulnerability-register.md)
 - [Security policy](docs/security-policy.md)
 - [AI usage declaration](docs/ai-usage.md)
