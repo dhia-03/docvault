@@ -27,8 +27,22 @@ def database_url() -> URL:
     return url
 
 
+MIN_SIGNING_KEY_LENGTH = 32
+
+
+def signing_key() -> str:
+    """Returns the key that signs session cookies (F05 fix).
+
+    It is supplied at runtime, never written in the code. A short key could be
+    guessed, so start-up fails instead of running with one.
+    """
+    key = secret("SECRET_KEY")
+    if len(key) < MIN_SIGNING_KEY_LENGTH:
+        raise RuntimeError(
+            f"SECRET_KEY must be at least {MIN_SIGNING_KEY_LENGTH} characters long."
+        )
+    return key
+
+
 DATABASE_URL = database_url()
 STORAGE_DIR = os.environ.get("STORAGE_DIR", "/data/documents")
-
-# VULN F05: hard-coded signing key committed to Git. This is a test value only.
-SECRET_KEY = "dv-test-9f3K2mQ7xLp4Zt8RwB6nYc1HsV5jGa0E"

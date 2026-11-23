@@ -31,6 +31,7 @@ from app.auth import (
     current_user,
     hash_password,
     require_role,
+    session_serializer,
     verify_password,
 )
 from app.config import STORAGE_DIR
@@ -38,6 +39,10 @@ from app.db import get_db
 from app.models import ROLES, AuditLog, Document, Share, User
 
 BASE_DIR = Path(__file__).resolve().parent
+
+# Fail at start-up, not at the first sign-in, if the signing key is missing
+# or too short.
+session_serializer()
 
 app = FastAPI(title="DocVault", docs_url=None, redoc_url=None, openapi_url=None)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
