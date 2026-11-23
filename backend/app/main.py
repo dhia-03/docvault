@@ -6,12 +6,14 @@ on localhost or in a dedicated test environment.
 """
 
 import os
+import re
 import shutil
 import uuid
 from pathlib import Path
 
 import yaml
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import (
     FileResponse,
     HTMLResponse,
@@ -21,13 +23,16 @@ from fastapi.responses import (
 )
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
+from app import security_events
 from app.auth import (
     SESSION_COOKIE,
     SESSION_MAX_AGE_SECONDS,
     NotAuthenticated,
+    client_ip,
     create_session,
     current_user,
     hash_password,
@@ -148,6 +153,31 @@ def handle_not_authenticated(_request: Request, _exc: NotAuthenticated) -> Respo
     return redirect("/login")
 
 
+DOCUMENT_PATH = re.compile(r"^/documents/(\d+)(?:/|$)")
+
+
+@app.exception_handler(StarletteHTTPException)
+async def record_refusals(request: Request, exc: StarletteHTTPException) -> Response:
+    """Records refused requests by signed-in users as security events.
+
+    One place for every route: a 403 or 404 on a document (alert DV-A3 when
+    repeated) and a 403 on an admin or audit page (alert DV-A4). The access
+    checks themselves stay in get_readable_document and require_role.
+    """
+    user = getattr(request.state, "user", None)
+    path = request.url.path
+    if user is not None and exc.status_code in (403, 404):
+        match = DOCUMENT_PATH.match(path)
+        if match:
+            security_events.document_denied(
+                user.username, client_ip(request), request.method, path,
+                exc.status_code, int(match.group(1)),
+            )
+        elif exc.status_code == 403 and (path == "/audit" or path.startswith("/admin")):
+            security_events.role_denied(user.username, client_ip(request), request.method, path)
+    return await http_exception_handler(request, exc)
+
+
 @app.get("/healthz", response_class=PlainTextResponse)
 def healthz() -> str:
     return "ok"
@@ -173,6 +203,7 @@ def login(
     user = db.scalar(select(User).where(User.username == username))
     if user is None or not verify_password(user.password_hash, password):
         audit(db, username[:64], "login_failed")
+        security_events.login_failed(username, client_ip(request))
         return render(
             request,
             "login.html",
@@ -182,6 +213,7 @@ def login(
         )
 
     audit(db, user.username, "login")
+    security_events.login_succeeded(user.username, client_ip(request))
     response = redirect("/documents")
     # F03 fix: HttpOnly keeps the cookie away from page scripts, and Secure
     # keeps it off plain HTTP (see SESSION_COOKIE_SECURE).

@@ -1,0 +1,73 @@
+# Values for the Falco Helm chart, rendered by scripts/ci/deploy.sh with
+# `helm template` (no Helm release is installed in the cluster). The DocVault
+# rules (docvault_rules.yaml) are added at render time as a custom rules file.
+
+# The image tag is set by deploy.sh (FALCO_IMAGE), which pulls the image on
+# the host by digest and loads it into the kind node.
+
+driver:
+  # The modern eBPF probe is built into Falco and uses the kernel's BTF type
+  # information: no kernel module, no kernel headers, no driver download. It
+  # needs a 5.8+ kernel with /sys/kernel/btf/vmlinux (WSL2 and GitHub's Ubuntu
+  # runners have it).
+  kind: modern_ebpf
+  loader:
+    # The driver loader init container only builds or downloads the kernel
+    # module and the legacy eBPF probe, which modern_ebpf does not use.
+    enabled: false
+
+# falcoctl downloads rules and plugins from the internet at start-up and then
+# updates them weekly. The Falco image already contains the default rules and
+# the container plugin, and pinned rules are better for a repeatable check;
+# it would also need DNS from inside the kind node, which is unreliable on WSL.
+falcoctl:
+  artifact:
+    install:
+      enabled: false
+    follow:
+      enabled: false
+
+collectors:
+  containerEngine:
+    # Container and Kubernetes metadata (container name, pod, namespace) come
+    # from the kind node's containerd over CRI. The chart mounts the socket's
+    # directory under /host. The other engines do not exist in a kind node.
+    engines:
+      docker:
+        enabled: false
+      podman:
+        enabled: false
+      containerd:
+        enabled: false
+      cri:
+        enabled: true
+        sockets: ["/run/containerd/containerd.sock"]
+      lxc:
+        enabled: false
+      libvirt_lxc:
+        enabled: false
+      bpm:
+        enabled: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+falco:
+  # Every matching rule raises its own alert. With the default ("first"), a
+  # default rule such as "Terminal shell in container" would hide DV-R1 for
+  # the same event.
+  rule_matching: all
+  # One JSON object per alert on standard output, read with kubectl logs.
+  json_output: true
+  json_include_output_property: true
+  json_include_tags_property: true
+  stdout_output:
+    enabled: true
+  # There is no syslog daemon in the container.
+  syslog_output:
+    enabled: false
