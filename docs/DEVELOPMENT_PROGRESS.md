@@ -64,6 +64,7 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 | F03 fix on Compose, 2026-11-23 | Not exploitable; CSP and other headers present; cookie `HttpOnly` |
 | F01 fix on Compose, 2026-11-23 | Not exploitable; sharing rules checked; `run_all.py`: 0 of 6 tested flaws exploitable |
 | ZAP on Compose with F02, F03 and F04 fixed, 2026-11-23 | Passed: no High alert; only the CSRF `Medium` alert (O1) left |
+| pytest suite (`backend/tests/`), 2026-11-23 | 37 passed on the fixed code; on `secure` before the F01 and F03 fixes, exactly the 7 F01/F03 tests failed |
 | CI run 45083855384, 2026-11-23 | ZAP blocked with the same 4 High alerts, plus one false positive on `/documents/1/share`; report in `docs/evidence/` |
 | CI run 45071375296 on pull request #2, 2026-11-22 | All five checks failed with the same results as locally; log in `docs/evidence/` |
 
@@ -74,7 +75,7 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 - The deploy stage does not wait for the static checks, so the vulnerable baseline can be scanned by ZAP. Merging still needs every check.
 - ZAP scans as one user, so it cannot find F01 (access between users), and it missed the stored XSS.
 - The current Semgrep rule packs miss F03 and F04.
-- No automated test suite exists yet; the exploit script is the only repeatable check.
+- The pytest suite runs on SQLite, so it checks the secure query logic, not PostgreSQL-specific behaviour. The exploit script and ZAP cover the real database.
 
 ## Open questions
 

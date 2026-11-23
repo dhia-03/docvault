@@ -53,7 +53,7 @@ Each exception is approved by the project owner. In a one-person project the aut
 
 A passing pipeline does not mean DocVault is secure.
 
-- Scanners do not reliably find business-logic flaws such as broken access control. F01 depends on automated tests.
+- Scanners do not reliably find business-logic flaws such as broken access control. F01 is covered by the pytest suite (`Tests (pytest)` in CI), which signs in as two users.
 - The current Semgrep rule packs missed two planted flaws, F03 (XSS) and F04 (path traversal), at every severity. ZAP found both.
 - Semgrep's `WARNING` and `INFO` rules are not run in the blocking stage.
 - Semgrep rule packs are downloaded at scan time and are not version-pinned, so results can change between runs.

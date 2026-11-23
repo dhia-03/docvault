@@ -104,14 +104,22 @@ def can_read(db: Session, document: Document, user: User) -> bool:
     return share is not None
 
 
-def stored_file(document: Document) -> Path:
-    """Returns the document's file, refusing any path outside the storage folder.
+def contained_file(document: Document) -> Path | None:
+    """Returns the document's file if it exists inside the storage folder.
 
     Files are stored under server-generated names (F04 fix), so this only
     guards against rows written before the fix, or a future mistake.
     """
     path = Path(document.stored_path).resolve()
-    if not path.is_relative_to(Path(STORAGE_DIR).resolve()) or not path.is_file():
+    if path.is_relative_to(Path(STORAGE_DIR).resolve()) and path.is_file():
+        return path
+    return None
+
+
+def stored_file(document: Document) -> Path:
+    """Returns the document's file for reading, or answers 404."""
+    path = contained_file(document)
+    if path is None:
         raise HTTPException(status_code=404, detail="Not found")
     return path
 
@@ -334,8 +342,11 @@ def delete_document(
     db: Session = Depends(get_db),
 ) -> Response:
     document = get_owned_document(db, document_id, user)
-    if os.path.isfile(document.stored_path):
-        os.remove(document.stored_path)
+    # Only a file inside the storage folder is deleted; a row written before
+    # the F04 fix could point elsewhere.
+    path = contained_file(document)
+    if path is not None:
+        path.unlink()
     db.delete(document)
     db.commit()
     audit(db, user.username, "delete", f"document:{document_id}")
