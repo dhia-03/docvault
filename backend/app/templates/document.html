@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Document - DocVault{% endblock %}
 {% block content %}
-{# VULN F03: the stored title is rendered without output encoding. #}
-<h1>{{ document.title|safe }}</h1>
+{# F03 fix: no |safe filter, so Jinja escapes the stored title. #}
+<h1>{{ document.title }}</h1>
 <dl>
   <dt>Owner</dt><dd>{{ document.owner.username }}</dd>
   <dt>File</dt><dd>{{ document.filename }}</dd>

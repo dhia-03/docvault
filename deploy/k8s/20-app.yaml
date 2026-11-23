@@ -85,6 +85,10 @@ spec:
               value: /run/secrets/docvault/POSTGRES_PASSWORD
             - name: SECRET_KEY_FILE
               value: /run/secrets/docvault/SECRET_KEY
+            # The test cluster is reached over plain HTTP. A deployment behind
+            # HTTPS must remove this, so the cookie gets the Secure flag.
+            - name: SESSION_COOKIE_SECURE
+              value: "false"
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

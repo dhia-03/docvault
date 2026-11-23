@@ -8,16 +8,15 @@
   <button>Search</button>
 </form>
 
-{# VULN F03: the search term is rendered without output encoding. #}
-{% if q %}<p>Results for: {{ q|safe }}</p>{% endif %}
+{# F03 fix: no |safe filter, so Jinja escapes the search term. #}
+{% if q %}<p>Results for: {{ q }}</p>{% endif %}
 
 <table>
   <thead><tr><th>Title</th><th>File</th><th>Added</th></tr></thead>
   <tbody>
     {% for document in documents %}
     <tr>
-      {# VULN F03: stored titles are rendered without output encoding. #}
-      <td><a href="/documents/{{ document.id }}">{{ document.title|safe }}</a></td>
+      <td><a href="/documents/{{ document.id }}">{{ document.title }}</a></td>
       <td>{{ document.filename }}</td>
       <td>{{ document.created_at }}</td>
     </tr>

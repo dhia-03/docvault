@@ -46,3 +46,8 @@ def signing_key() -> str:
 
 DATABASE_URL = database_url()
 STORAGE_DIR = os.environ.get("STORAGE_DIR", "/data/documents")
+
+# The session cookie is only sent over HTTPS unless this is "false". Local
+# Compose, the kind test cluster and the tests use plain HTTP, so they turn it
+# off explicitly; any deployment behind HTTPS keeps the default.
+SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "true").lower() != "false"
