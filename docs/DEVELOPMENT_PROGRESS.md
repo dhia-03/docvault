@@ -1,21 +1,21 @@
 # Development progress
 
-Last updated: 2026-11-22
+Last updated: 2026-11-23
 
 ## Current status
 
-The deliberately vulnerable DocVault application works locally with Docker Compose and on Kubernetes, and all seven planted flaws are confirmed exploitable. All five blocking checks run in CI, and `main` only accepts merges that pass them. The theme is pending validation by the professor.
+All seven planted flaws were documented, exploited, then fixed and re-tested. The fixes are merged into `secure`, and the leaked key was revoked, then purged from history. Seven checks run in CI (the five required by the course, ZAP and the tests), and `main` only accepts merges that pass all of them. The vulnerable baseline stays available as tag `v0-vulnerable`. The theme is pending validation by the professor.
 
 | Step | Status |
 | --- | --- |
 | 1. Theme reservation (Annexe A) | Drafted, not submitted |
 | 2. Threat model and blocking policy | Drafted, awaiting review |
 | 3. Vulnerable application, with flaws documented | Built on `vulnerable-baseline`; flaws documented |
-| 4. Hardened container and five-check CI, with proof that it blocks | Done; hardened container on `fix/f07-hardening` |
-| 5. Hardened Kubernetes deployment and Kyverno | Done on `fix/f07-hardening`, not merged yet |
+| 4. Hardened container and five-check CI, with proof that it blocks | Done |
+| 5. Hardened Kubernetes deployment and Kyverno | Done |
 | 6. Authenticated ZAP in the pipeline | Done: F02, F03 and F04 confirmed on the baseline |
-| 7. Fix each flaw and re-test | All seven fixed and re-tested; F05 history purge pending |
-| 8. Revoke-then-purge demonstration | Revoked and verified; purge prepared and dry-run, waiting for approval |
+| 7. Fix each flaw and re-test | Done: all seven fixed and re-tested, merged into `secure` |
+| 8. Revoke-then-purge demonstration | Done: revoked, verified, purged and verified (`docs/f05-revoke-then-purge.md`) |
 | 9. Runtime detection and incident response plan | Not started |
 | 10. Report, slides, contribution sheet and AI declaration | AI log started |
 
@@ -26,7 +26,7 @@ The deliberately vulnerable DocVault application works locally with Docker Compo
 - Vulnerable application with login, three roles, upload, search, sharing, admin pages and an audit log
 - Vulnerability register for F01 to F07
 - Repository made public on 2026-11-22, so that `main` can require the checks (branch protection is not available on private repositories in the free plan)
-- `main` protection: pull request required, all six checks (five static, plus ZAP) must pass, applies to admins
+- `main` protection: pull request required, all seven checks (five static, ZAP and the tests) must pass, applies to admins
 - `vulnerable-baseline` pushed and tagged `v0-vulnerable`; draft pull request #2 kept open as CI evidence, never to be merged
 - Image scan (Trivy) and deployment-file scan (Checkov) added to CI
 - Baseline Kubernetes manifests in `deploy/k8s/`, including the Kubernetes half of F07
@@ -65,6 +65,7 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 | F01 fix on Compose, 2026-11-23 | Not exploitable; sharing rules checked; `run_all.py`: 0 of 6 tested flaws exploitable |
 | ZAP on Compose with F02, F03 and F04 fixed, 2026-11-23 | Passed: no High alert; only the CSRF `Medium` alert (O1) left |
 | pytest suite (`backend/tests/`), 2026-11-23 | 37 passed on the fixed code; on `secure` before the F01 and F03 fixes, exactly the 7 F01/F03 tests failed |
+| History purge, 2026-11-23 | Fresh clone: old value found 0 times in any commit; Gitleaks clean on working tree and 22 commits |
 | CI run 45083855384, 2026-11-23 | ZAP blocked with the same 4 High alerts, plus one false positive on `/documents/1/share`; report in `docs/evidence/` |
 | CI run 45071375296 on pull request #2, 2026-11-22 | All five checks failed with the same results as locally; log in `docs/evidence/` |
 
@@ -85,10 +86,12 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 
 ## Security issues
 
-Seven planted flaws and five unplanned weaknesses are open. See the [vulnerability register](vulnerability-register.md).
+The seven planted flaws and O4, O5 are fixed. Three unplanned weaknesses are open: O1 (no CSRF tokens), O2 (no login rate limit) and O3 (no upload size limit). See the [vulnerability register](vulnerability-register.md).
 
 ## Next steps
 
-1. Screenshot the merge box of pull request #2, showing the merge blocked by the six failing checks.
-2. Merge F06 and F05 into `secure`, agree on a time for the history purge, then run it.
-3. Merge F03, F01 and the test suite into `secure`, then `secure` into `main` once all checks pass. `secure` goes to `main` once all six checks pass.
+1. Merge `secure` into `main` through the open pull request, once all seven checks pass.
+2. Screenshot pull request #2 (vulnerable baseline, blocked) and the `secure` pull request (all checks green) for the report.
+3. Decide whether to ask GitHub Support to remove the old pull request references (see `docs/f05-revoke-then-purge.md`).
+4. Step 9: runtime detection and the incident response plan.
+5. Fix O1 to O3, then step 10: report, slides, Annexe B sheets and the AI declaration.

@@ -25,7 +25,7 @@ After the purge, the old value is no longer in history. To repeat this test, set
 
 ## Step 3: purge the key from Git history
 
-Not done yet. It rewrites shared branches, so it needs the team's agreement.
+Done on 2026-11-23, after every branch was pushed. The dry run and the real run both found no leak in the rewritten history.
 
 [`scripts/security/purge-leaked-key.sh`](../scripts/security/purge-leaked-key.sh) works on a fresh copy of the repository in a temporary folder:
 
@@ -41,9 +41,12 @@ Before running it with `--push`:
 - `fix/f05-signing-key` is pushed, so it is rewritten too.
 - Run it once without `--push` and check the list of refs.
 
-The dry run on 2026-11-23 found no leak in the rewritten history. It would rewrite `vulnerable-baseline`, `secure`, `fix/f07-hardening`, `fix/f06-pyyaml` and the tag `v0-vulnerable`, and leave `main` unchanged.
+Rewritten and force-pushed on 2026-11-23: `vulnerable-baseline`, `secure`, the seven `fix/*` branches and the tag `v0-vulnerable`. `main` was unchanged.
 
 ## Step 4: verify
+
+Done on 2026-11-23, in a fresh clone of all branches and tags: `git log --all -S` and `git grep` over every commit found the old value 0 times, and Gitleaks found no leak in the working tree or the history (22 commits). The local working copy was re-synced, its reflog expired and its old objects pruned; the old commit `3e82f9a` no longer exists there.
+
 
 - The **Secret scan (Gitleaks)** check passes on the next CI run. It scans the working tree and the full history.
 - `git log --all -S '<old value>'` finds nothing in a fresh clone.
@@ -51,7 +54,7 @@ The dry run on 2026-11-23 found no leak in the rewritten history. It would rewri
 ## After the purge
 
 - **Everyone re-clones.** An old clone still contains the key, and pushing from it would bring the key back.
-- **GitHub keeps old commits** reachable through pull request references (#2, #3, #4) and cached pages. Only GitHub Support can remove these; see GitHub's guide [Removing sensitive data from a repository](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository). This is why the key was revoked first.
+- **GitHub keeps old commits** reachable through pull request references (#2 to #9) and cached pages. **Not requested yet:** whether to ask GitHub Support is a team decision. Only GitHub Support can remove these; see GitHub's guide [Removing sensitive data from a repository](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository). This is why the key was revoked first.
 - **Commit IDs change** on the rewritten branches. Logs saved earlier in `docs/evidence/` keep the old IDs as a historical record.
 - **The merge commit of #3 loses its GitHub signature**, because it comes after the leak and has to be rewritten.
 - **No forks** existed on 2026-11-23. Any copy made while the repository was public still contains the key, which no longer works.
