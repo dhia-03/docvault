@@ -83,6 +83,8 @@ spec:
               value: postgresql+psycopg://docvault@db:5432/docvault
             - name: DATABASE_PASSWORD_FILE
               value: /run/secrets/docvault/POSTGRES_PASSWORD
+            - name: SECRET_KEY_FILE
+              value: /run/secrets/docvault/SECRET_KEY
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -123,8 +125,9 @@ spec:
         - name: documents
           persistentVolumeClaim:
             claimName: documents
-        # The app only gets the database password; the seed password is only
-        # needed by the init container.
+        # Each container only gets the secrets it uses: the app does not need
+        # the seed password, and the init container does not need the
+        # session signing key.
         - name: app-secrets
           secret:
             secretName: docvault-secrets
@@ -132,10 +135,17 @@ spec:
             items:
               - key: POSTGRES_PASSWORD
                 path: POSTGRES_PASSWORD
+              - key: SECRET_KEY
+                path: SECRET_KEY
         - name: prepare-secrets
           secret:
             secretName: docvault-secrets
             defaultMode: 0440
+            items:
+              - key: POSTGRES_PASSWORD
+                path: POSTGRES_PASSWORD
+              - key: SEED_PASSWORD
+                path: SEED_PASSWORD
         - name: tmp
           emptyDir: {}
 ---

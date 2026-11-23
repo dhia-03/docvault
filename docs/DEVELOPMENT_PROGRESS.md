@@ -14,8 +14,8 @@ The deliberately vulnerable DocVault application works locally with Docker Compo
 | 4. Hardened container and five-check CI, with proof that it blocks | Done; hardened container on `fix/f07-hardening` |
 | 5. Hardened Kubernetes deployment and Kyverno | Done on `fix/f07-hardening`, not merged yet |
 | 6. Authenticated ZAP in the pipeline | Done: F02, F03 and F04 confirmed on the baseline |
-| 7. Fix each flaw and re-test | F07 and F06 fixed and re-tested; F01 to F05 open |
-| 8. Revoke-then-purge demonstration | Not started |
+| 7. Fix each flaw and re-test | F07 and F06 fixed and re-tested; F05 key revoked; F01 to F04 open |
+| 8. Revoke-then-purge demonstration | Revoked and verified; purge prepared and dry-run, waiting for approval |
 | 9. Runtime detection and incident response plan | Not started |
 | 10. Report, slides, contribution sheet and AI declaration | AI log started |
 
@@ -57,6 +57,8 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 | Hardened deploy on a fresh kind cluster, 2026-11-23 | Kyverno refused a pod with no security context (4 policies); the database did not answer a pod from another namespace; app and database started with 0 restarts |
 | `run_all.py` on the hardened deploy and on Compose, 2026-11-23 | 6 of 7 exploitable; F07 not exploitable (UID 10001); F04 can no longer write outside storage |
 | F06 fix on Compose and on kind (with F07), 2026-11-23 | F06 not exploitable; dependency scan and image scan pass with 0 findings |
+| F05 revocation on Compose and kind, 2026-11-23 | Session forged with the leaked key refused (HTTP 303); Gitleaks clean on the working tree, history still holds the key |
+| Purge dry run, 2026-11-23 | Rewritten history has no leak; 4 branches and 1 tag would change; `main` unchanged |
 | CI run 45083855384, 2026-11-23 | ZAP blocked with the same 4 High alerts, plus one false positive on `/documents/1/share`; report in `docs/evidence/` |
 | CI run 45071375296 on pull request #2, 2026-11-22 | All five checks failed with the same results as locally; log in `docs/evidence/` |
 
@@ -82,4 +84,5 @@ Seven planted flaws and five unplanned weaknesses are open. See the [vulnerabili
 ## Next steps
 
 1. Screenshot the merge box of pull request #2, showing the merge blocked by the six failing checks.
-2. Review and merge the F07 and F06 pull requests into `secure`, then fix F01 to F05, each on its own branch. `secure` goes to `main` once all six checks pass.
+2. Merge F06 and F05 into `secure`, agree on a time for the history purge, then run it.
+3. Fix F01 to F04, each on its own branch. `secure` goes to `main` once all six checks pass.
