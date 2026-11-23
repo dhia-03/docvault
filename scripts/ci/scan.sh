@@ -54,10 +54,13 @@ scan_gitleaks() {
 
 scan_semgrep() {
   echo "==> Semgrep: source code"
+  # docs/evidence holds saved scan logs and reports, not code. Scanning them
+  # is slow and made a rule time out.
   "${RUN[@]}" "$SEMGREP_IMAGE" \
     semgrep scan \
     --config p/default \
     --config p/owasp-top-ten \
+    --exclude docs/evidence \
     --severity ERROR \
     --error \
     --metrics off \

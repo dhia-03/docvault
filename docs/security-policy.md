@@ -38,7 +38,8 @@ Each exception is approved by the project owner. In a one-person project the aut
 
 | ID | Finding | Reason | Compensating control | Owner | Expires |
 | --- | --- | --- | --- | --- | --- |
-| None yet | | | | | |
+| E1 | Checkov `CKV_K8S_15`: image pull policy is `IfNotPresent`, not `Always`, on both workloads | Images are built or pulled on the host and loaded into the kind cluster by `deploy.sh`. There is no registry for the cluster to pull from, so `Always` would make every pod fail | The cluster never pulls anything; PostgreSQL is pinned by digest and the app image is rebuilt and scanned on every run | M3 (container and Kubernetes) | Final submission, or earlier if a registry is added |
+| E2 | Checkov `CKV_K8S_43`: the app image `docvault-app:dev` is referenced by tag, not digest | The image is built locally on each run, so it has no registry digest to pin | The image is built from the reviewed commit in the same job, scanned by Trivy, and loaded directly into the cluster | M3 (container and Kubernetes) | Final submission, or earlier if a registry is added |
 
 ## Exposed secret procedure
 
@@ -58,6 +59,10 @@ A passing pipeline does not mean DocVault is secure.
 - Semgrep rule packs are downloaded at scan time and are not version-pinned, so results can change between runs.
 - Checkov's "any failed check" threshold includes checks that are good practice rather than security, such as liveness probes. Some will not fit a local cluster: an `Always` pull policy and image digests need a registry. These will be handled through recorded exceptions, not by lowering the threshold.
 - The image scan only covers the application image. The PostgreSQL image is pulled as-is and is not scanned.
+- Kyverno publishes no checksum for `install.yaml` in v1.19.2. `deploy.sh` checks it against a SHA-256 recorded on first download, which only proves the file has not changed since then.
+- The Kyverno policies use the `kyverno.io/v1` `ClusterPolicy` format, which Kyverno 1.19 marks as deprecated in favour of CEL-based policies. It still works; migrating is future work.
+- Kyverno and the network policies are tested on kind only. Whether a given cluster enforces network policies depends on its network plugin.
+- Checkov exceptions are recorded as `checkov.io/skip` annotations on the resources, which point to the register above. Anyone who can edit a manifest can add one, so each new annotation must be reviewed in the pull request.
 - `--ignore-unfixed` hides vulnerabilities that have no fix yet. A critical issue with no fix does not fail the build.
 - Vulnerability scanners only find publicly known issues.
 - ZAP only tests the pages and inputs it reaches, as the single test user `alice`. It does not test access between users, so it cannot find F01.
