@@ -1,0 +1,133 @@
+# Kyverno admission policies (F07 fix). They reject, at admission time, any
+# pod that would run the way the baseline did: as root, with privilege
+# escalation, default capabilities, a writable root filesystem, no resource
+# limits or an automatically mounted service account token.
+#
+# Kyverno also applies these rules to Deployments and StatefulSets, so a
+# non-compliant workload is refused when it is applied, not later.
+# System namespaces are excluded: their components are managed by kind and
+# Kyverno themselves.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: pod-security-restricted
+  annotations:
+    policies.kyverno.io/title: Kubernetes "restricted" Pod Security Standard
+    policies.kyverno.io/description: >-
+      Requires non-root users, no privilege escalation, all capabilities
+      dropped, the default seccomp profile and safe volume types.
+spec:
+  background: true
+  rules:
+    - name: restricted
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+      exclude:
+        any:
+          - resources:
+              namespaces: ["kube-system", "kyverno", "local-path-storage"]
+      validate:
+        failureAction: Enforce
+        podSecurity:
+          level: restricted
+          version: latest
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-read-only-root-filesystem
+  annotations:
+    policies.kyverno.io/title: Read-only root filesystem
+    policies.kyverno.io/description: >-
+      An attacker who gets code execution cannot modify the image's files or
+      leave tools behind. Writable paths must be explicit volumes.
+spec:
+  background: true
+  rules:
+    - name: read-only-root-filesystem
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+      exclude:
+        any:
+          - resources:
+              namespaces: ["kube-system", "kyverno", "local-path-storage"]
+      validate:
+        failureAction: Enforce
+        message: Every container must set securityContext.readOnlyRootFilesystem to true.
+        pattern:
+          spec:
+            =(initContainers):
+              - securityContext:
+                  readOnlyRootFilesystem: true
+            containers:
+              - securityContext:
+                  readOnlyRootFilesystem: true
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resource-limits
+  annotations:
+    policies.kyverno.io/title: CPU and memory limits
+    policies.kyverno.io/description: >-
+      Limits stop one container, for example one under attack, from starving
+      the others on the node.
+spec:
+  background: true
+  rules:
+    - name: cpu-and-memory-limits
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+      exclude:
+        any:
+          - resources:
+              namespaces: ["kube-system", "kyverno", "local-path-storage"]
+      validate:
+        failureAction: Enforce
+        message: Every container must set CPU and memory limits.
+        pattern:
+          spec:
+            =(initContainers):
+              - resources:
+                  limits:
+                    cpu: "?*"
+                    memory: "?*"
+            containers:
+              - resources:
+                  limits:
+                    cpu: "?*"
+                    memory: "?*"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-service-account-token
+  annotations:
+    policies.kyverno.io/title: No automatic service account token
+    policies.kyverno.io/description: >-
+      DocVault never calls the Kubernetes API, so a mounted token would only
+      give an attacker a credential.
+spec:
+  background: true
+  rules:
+    - name: no-automount
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+      exclude:
+        any:
+          - resources:
+              namespaces: ["kube-system", "kyverno", "local-path-storage"]
+      validate:
+        failureAction: Enforce
+        message: Pods must set automountServiceAccountToken to false.
+        pattern:
+          spec:
+            automountServiceAccountToken: false

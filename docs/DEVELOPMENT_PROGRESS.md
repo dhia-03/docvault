@@ -11,10 +11,10 @@ The deliberately vulnerable DocVault application works locally with Docker Compo
 | 1. Theme reservation (Annexe A) | Drafted, not submitted |
 | 2. Threat model and blocking policy | Drafted, awaiting review |
 | 3. Vulnerable application, with flaws documented | Built on `vulnerable-baseline`; flaws documented |
-| 4. Hardened container and five-check CI, with proof that it blocks | Five checks active and blocking; container not hardened yet |
-| 5. Hardened Kubernetes deployment and Kyverno | Baseline manifests only |
+| 4. Hardened container and five-check CI, with proof that it blocks | Done; hardened container on `fix/f07-hardening` |
+| 5. Hardened Kubernetes deployment and Kyverno | Done on `fix/f07-hardening`, not merged yet |
 | 6. Authenticated ZAP in the pipeline | Done: F02, F03 and F04 confirmed on the baseline |
-| 7. Fix each flaw and re-test | Not started |
+| 7. Fix each flaw and re-test | F07 fixed and re-tested; F01 to F06 open |
 | 8. Revoke-then-purge demonstration | Not started |
 | 9. Runtime detection and incident response plan | Not started |
 | 10. Report, slides, contribution sheet and AI declaration | AI log started |
@@ -54,6 +54,8 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 | Manifests on a throwaway k3s cluster, 2026-11-22 | Deployed; app pod runs as UID 0; `run_all.py` found 7 of 7 flaws exploitable |
 | actionlint and ShellCheck, 2026-11-22 | No errors |
 | Authenticated ZAP scan on kind, 2026-11-23 | Blocked: 4 High alerts confirming F02, F03 and F04; 3 Medium, including missing CSRF tokens (O1) |
+| Hardened deploy on a fresh kind cluster, 2026-11-23 | Kyverno refused a pod with no security context (4 policies); the database did not answer a pod from another namespace; app and database started with 0 restarts |
+| `run_all.py` on the hardened deploy and on Compose, 2026-11-23 | 6 of 7 exploitable; F07 not exploitable (UID 10001); F04 can no longer write outside storage |
 | CI run 45083855384, 2026-11-23 | ZAP blocked with the same 4 High alerts, plus one false positive on `/documents/1/share`; report in `docs/evidence/` |
 | CI run 45071375296 on pull request #2, 2026-11-22 | All five checks failed with the same results as locally; log in `docs/evidence/` |
 
@@ -78,5 +80,5 @@ Seven planted flaws and five unplanned weaknesses are open. See the [vulnerabili
 
 ## Next steps
 
-1. Screenshot the merge box of pull request #2, showing the merge blocked by the five failing checks.
-2. Harden the container and manifests and add Kyverno, then fix each flaw on its own branch.
+1. Screenshot the merge box of pull request #2, showing the merge blocked by the six failing checks.
+2. Review and merge the F07 hardening, then fix F01 to F06, each on its own branch.
