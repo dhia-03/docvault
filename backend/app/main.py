@@ -7,6 +7,7 @@ on localhost or in a dedicated test environment.
 
 import os
 import shutil
+import uuid
 from pathlib import Path
 
 import yaml
@@ -80,6 +81,18 @@ def can_read(db: Session, document: Document, user: User) -> bool:
         )
     )
     return share is not None
+
+
+def stored_file(document: Document) -> Path:
+    """Returns the document's file, refusing any path outside the storage folder.
+
+    Files are stored under server-generated names (F04 fix), so this only
+    guards against rows written before the fix, or a future mistake.
+    """
+    path = Path(document.stored_path).resolve()
+    if not path.is_relative_to(Path(STORAGE_DIR).resolve()) or not path.is_file():
+        raise HTTPException(status_code=404, detail="Not found")
+    return path
 
 
 def get_owned_document(db: Session, document_id: int, user: User) -> Document:
@@ -176,15 +189,18 @@ def upload_document(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> Response:
-    # VULN F04: the client-supplied file name is used to build the storage path.
-    path = os.path.join(STORAGE_DIR, file.filename or "upload")
-    with open(path, "wb") as output:
+    # F04 fix: the file is stored under a random name chosen by the server.
+    # The client's file name is kept only for display and download, without
+    # any directory part, so it can never select where the file is written.
+    display_name = Path(file.filename or "").name[:255] or "upload"
+    path = os.path.join(STORAGE_DIR, uuid.uuid4().hex)
+    with open(path, "xb") as output:
         shutil.copyfileobj(file.file, output)
 
     document = Document(
         owner_id=user.id,
         title=title,
-        filename=file.filename or "upload",
+        filename=display_name,
         stored_path=path,
     )
     db.add(document)
@@ -215,21 +231,21 @@ def download_document(
     # VULN F01: any signed-in user can download any document; no access check.
     document = get_document(db, document_id)
     audit(db, user.username, "download", f"document:{document.id}")
-    return FileResponse(
-        document.stored_path, filename=os.path.basename(document.filename)
-    )
+    return FileResponse(stored_file(document), filename=os.path.basename(document.filename))
 
 
-@app.get("/preview", response_class=PlainTextResponse)
+@app.get("/documents/{document_id}/preview", response_class=PlainTextResponse)
 def preview_document(
-    file: str,
-    _user: User = Depends(current_user),
+    document_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
 ) -> str:
-    # VULN F04: the requested path is not confined to the storage folder.
-    path = os.path.join(STORAGE_DIR, file)
-    if not os.path.isfile(path):
-        raise HTTPException(status_code=404, detail="Not found")
-    with open(path, encoding="utf-8", errors="replace") as source:
+    # F04 fix: the preview is chosen by document ID, after an access check,
+    # instead of by a file path from the request.
+    document = get_document(db, document_id)
+    if not can_read(db, document, user):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    with open(stored_file(document), encoding="utf-8", errors="replace") as source:
         return source.read()
 
 

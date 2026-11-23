@@ -10,7 +10,7 @@
 </dl>
 <p>
   <a href="/documents/{{ document.id }}/download">Download</a> ·
-  <a href="/preview?file={{ document.filename|urlencode }}">Preview</a>
+  <a href="/documents/{{ document.id }}/preview">Preview</a>
 </p>
 
 {% if document.owner_id == user.id %}
