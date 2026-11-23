@@ -1,0 +1,175 @@
+# DocVault runtime detection rules for Falco, loaded next to Falco's default
+# rules (see deploy/README.md, "Runtime detection").
+#
+# Every rule is scoped to the docvault namespace and starts with a stable ID
+# (DV-R1 to DV-R4), also present as a tag, so the incident response plan and
+# alert routing can refer to it. The IDs must not be renumbered.
+#
+# The rules describe what DocVault normally does, so anything else stands out:
+# the app container runs uvicorn (Python) and nothing else, the init container
+# runs one fixed shell command, and PostgreSQL's entrypoint is a shell script.
+# Those expected cases are excluded precisely, by container name, PID inside
+# the container and exact command line, never by a broad name such as "sh".
+
+- list: dv_shell_binaries
+  items: [ash, bash, busybox, csh, dash, fish, ksh, mksh, sh, tcsh, zsh]
+
+# The app container's command is uvicorn, a Python script; its process name
+# is the script's name.
+- list: dv_app_processes
+  items: [python, python3, python3.12, uvicorn]
+
+# Account files no DocVault process ever reads.
+- list: dv_account_files
+  items: [/etc/shadow, /etc/shadow-, /etc/gshadow, /etc/gshadow-, /etc/sudoers]
+
+# Container metadata (namespace, pod, container name) comes from the kind
+# node's containerd, through Falco's container plugin.
+- macro: dv_container
+  condition: (container.id != host and k8s.ns.name = docvault)
+
+# A successful program start. A failed execve leaves the old process in place,
+# so its name would describe the wrong program.
+- macro: dv_spawned_process
+  condition: (evt.type in (execve, execveat) and evt.rawres = 0)
+
+# Container runtime helpers that Falco sees inside a container, because they
+# run in its cgroup, but that are not the workload:
+# - "runc init", which runc starts (from its own copy, /runc) to enter the
+#   container on every kubectl exec; its name is the file descriptor it was
+#   started from;
+# - kind's OCI hook, /kind/bin/mount-product-files.sh, run as root from the
+#   node for every new container before the container's own process starts,
+#   and the jq and cp it calls. It only exists in kind. Its name is cut to
+#   the kernel's 15 characters. It runs as root, which DocVault's processes
+#   (UID 10001, no privilege escalation) cannot become, so a process inside
+#   the container cannot pass for it.
+- macro: dv_runtime_helper
+  condition: >
+    (proc.pname = runc and proc.exepath = /runc and proc.args = init)
+    or (user.uid = 0
+        and (proc.cmdline = "mount-product-f /kind/bin/mount-product-files.sh"
+             or proc.pcmdline = "mount-product-f /kind/bin/mount-product-files.sh"))
+
+# The shells DocVault starts itself:
+# - the init container's command (deploy/k8s/20-app.yaml), as the container's
+#   first process (PID 1 inside the container);
+# - PostgreSQL's entrypoint script, also PID 1, with the image's default
+#   command;
+# - shells started, directly or not, by initdb and pg_ctl while the database
+#   is first created and started: initdb and pg_ctl run commands through
+#   /bin/sh, and the single-user server that initdb starts runs
+#   "sh -c locale -a" to list the system's locales.
+# Shells started by the running postgres server are NOT excluded: that is
+# what COPY ... FROM PROGRAM does, a classic way from SQL injection to code
+# execution. The final server is started by the entrypoint with exec, so
+# initdb and pg_ctl are not among its ancestors.
+- macro: dv_expected_shell
+  condition: >
+    (container.name = prepare and proc.vpid = 1
+       and proc.cmdline = "sh -c python -m app.wait_for_db && alembic upgrade head && python -m app.seed")
+    or (container.name = postgres and proc.vpid = 1
+       and proc.cmdline = "bash /usr/local/bin/docker-entrypoint.sh postgres")
+    or (container.name = postgres and proc.aname in (initdb, pg_ctl))
+
+- rule: DV-R1 Shell started in a DocVault container
+  desc: >
+    A shell started in a DocVault container, other than the init container's
+    command and PostgreSQL's startup scripts. Neither image needs a shell at
+    run time, so this means someone ran kubectl exec, or an attacker got code
+    execution (command injection, COPY FROM PROGRAM in PostgreSQL).
+  condition: >
+    dv_spawned_process and dv_container
+    and proc.name in (dv_shell_binaries)
+    and not dv_expected_shell
+    and not dv_runtime_helper
+  output: >
+    DV-R1 shell started in a DocVault container
+    (ns=%k8s.ns.name pod=%k8s.pod.name container=%container.name
+    shell=%proc.name cmdline=%proc.cmdline parent=%proc.pname
+    pid_in_container=%proc.vpid uid=%user.uid exe=%proc.exepath
+    tty=%proc.tty container_id=%container.id)
+  priority: WARNING
+  tags: [DV-R1, docvault, container, shell, mitre_execution, T1059]
+
+- rule: DV-R2 Unexpected program in the DocVault app container
+  desc: >
+    A program other than Python or uvicorn started in the app container. The
+    app never starts programs, so id, cat, curl, wget or a package manager
+    here means hands-on activity: reconnaissance, data access or tooling being
+    brought in. Shells are left to DV-R1, so one command does not raise both.
+  condition: >
+    dv_spawned_process and dv_container and container.name = app
+    and not proc.name in (dv_app_processes)
+    and not proc.name in (dv_shell_binaries)
+    and not dv_runtime_helper
+  output: >
+    DV-R2 unexpected program in the DocVault app container
+    (ns=%k8s.ns.name pod=%k8s.pod.name container=%container.name
+    program=%proc.name cmdline=%proc.cmdline parent=%proc.pname
+    exe=%proc.exepath uid=%user.uid container_id=%container.id)
+  priority: WARNING
+  tags: [DV-R2, docvault, container, process, mitre_discovery, T1082]
+
+# File opens are matched whether they succeed or fail: the app runs as UID
+# 10001, so reading /etc/shadow fails with "permission denied", and DocVault
+# mounts no service account token, so that path does not exist. The attempt
+# is still the signal. fs.path.name is the path the process asked for, made
+# absolute, and is set on failed opens too.
+#
+# The app's own secrets are read by the app process, which is PID 1 in its
+# container (uvicorn runs a single process). Any other process in the app
+# container opening them, even Python started through kubectl exec, is
+# reported. This part is limited to the app container: the init container and
+# PostgreSQL read their secrets with several processes during start-up.
+- rule: DV-R3 Sensitive file access in a DocVault container
+  desc: >
+    A DocVault container tried to open an account file (/etc/shadow and
+    similar), a Kubernetes service account token, or, in the app container,
+    the mounted DocVault secrets from a process other than the app. This is
+    credential access: an attacker looking for passwords or keys.
+  condition: >
+    evt.type in (open, openat, openat2) and dv_container
+    and (fs.path.name in (dv_account_files)
+         or fs.path.name startswith /run/secrets/kubernetes.io/
+         or fs.path.name startswith /var/run/secrets/kubernetes.io/
+         or (container.name = app and proc.vpid != 1
+             and fs.path.name startswith /run/secrets/docvault/))
+  output: >
+    DV-R3 sensitive file access in a DocVault container
+    (ns=%k8s.ns.name pod=%k8s.pod.name container=%container.name
+    file=%fs.path.name result=%evt.res program=%proc.name
+    cmdline=%proc.cmdline pid_in_container=%proc.vpid uid=%user.uid
+    container_id=%container.id)
+  priority: CRITICAL
+  tags: [DV-R3, docvault, container, filesystem, mitre_credential_access, T1552]
+
+# The app only talks to PostgreSQL (port 5432) and cluster DNS (port 53),
+# both on private cluster addresses. The network policies already block
+# everything else; this rule records the attempt, which the network policy
+# does not. Connection attempts are matched whatever their result, because a
+# blocked connection fails or never completes.
+- macro: dv_private_address
+  condition: (fd.snet in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"))
+
+- macro: dv_app_allowed_destination
+  condition: >
+    ((fd.sport = 5432 or fd.sport = 53) and dv_private_address)
+    or fd.snet in ("127.0.0.0/8")
+    or fd.sip = "0.0.0.0"
+
+- rule: DV-R4 Unexpected outbound connection from the DocVault app
+  desc: >
+    The app container tried to connect somewhere other than the database or
+    DNS: data exfiltration, a reverse shell or downloading tools.
+  condition: >
+    evt.type = connect and dv_container and container.name = app
+    and (fd.typechar = 4 or fd.typechar = 6)
+    and not dv_app_allowed_destination
+  output: >
+    DV-R4 unexpected outbound connection from the DocVault app
+    (ns=%k8s.ns.name pod=%k8s.pod.name container=%container.name
+    connection=%fd.name result=%evt.res program=%proc.name
+    cmdline=%proc.cmdline uid=%user.uid container_id=%container.id)
+  priority: WARNING
+  tags: [DV-R4, docvault, container, network, mitre_exfiltration, T1041]
