@@ -147,7 +147,7 @@ pres.addSection({ title: "Exigences et architecture" });
 // 5. Threats.
 {
   const s = content("Exigences et architecture", "Ce qui peut mal tourner");
-  const stats = [["18", "menaces analysées avec STRIDE"], ["6", "actifs, dont les documents et les secrets"], ["7", "catégories de l'OWASP Top 10:2025 couvertes"]];
+  const stats = [["18", "menaces analysées avec STRIDE"], ["6", "actifs, dont les documents et les secrets"], ["10", "catégories OWASP 2025 rattachées aux menaces"]];
   stats.forEach(([n, label], i) => {
     const y = 1.1 + i * 1.3;
     text(s, `threat stat ${i + 1}`, n, { x: 0.5, y, w: 1.2, h: 1.0, fontSize: 48, bold: true, color: TEAL, valign: "middle" });
