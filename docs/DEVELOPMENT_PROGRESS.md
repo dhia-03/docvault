@@ -18,7 +18,7 @@ All seven planted flaws were documented, exploited, then fixed and re-tested. Th
 | 6. Authenticated ZAP in the pipeline | Done: F02, F03 and F04 confirmed on the baseline |
 | 7. Fix each flaw and re-test | Done: all seven fixed and re-tested, merged into `secure` |
 | 8. Revoke-then-purge demonstration | Done: revoked, verified, purged and verified (`docs/f05-revoke-then-purge.md`) |
-| 9. Runtime detection and incident response plan | Done (merged into `main` through #11 and #12); drills planned |
+| 9. Runtime detection and incident response plan | Done (merged into `main` through #11 and #12); P1 and P2 drills run as technical run-throughs on 2026-11-24, team rehearsal planned |
 | 10. Report, slides, contribution sheet and AI declaration | AI log started |
 
 ## Completed
@@ -75,6 +75,7 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 | Step 9 end to end on a fresh kind cluster, 2026-11-23 | Deploy checks passed with Falco quiet; app demo: DV-A1 to DV-A4 detected; ZAP passed; Falco demo: DV-R1 to DV-R4 detected (7 of 7 checks) |
 | O1 to O3 on a fresh kind cluster, 2026-11-24 | Deploy checks passed, Falco quiet; DV-A1 to DV-A4 and DV-R1 to DV-R4 detected; ZAP passed. ZAP's fuzzing of the login form locked `alice` (209 failures, then 213 attempts refused with 429), while ZAP kept its session (582 authenticated page loads) |
 | Account controls, 2026-11-24 | 76 tests passed; upgrade from migration 0001 to 0003 on PostgreSQL with existing data; on Compose: revoke, disable, enable, CSV export with address and request ID checked; `run_all.py` 0 tested flaws exploitable; DV-A1 to DV-A4 detected |
+| Drills P1 and P2 on kind, 2026-11-24 | Scripted run-throughs: alert within 0.2 s, containment within 2.4 s, recovery verified (0 tested flaws exploitable); two findings fed back into the playbooks ([record](evidence/drills/2026-11-24-p1-p2.md)) |
 | CI run 45083855384, 2026-11-23 | ZAP blocked with the same 4 High alerts, plus one false positive on `/documents/1/share`; report in `docs/evidence/` |
 | CI run 45071375296 on pull request #2, 2026-11-22 | All five checks failed with the same results as locally; log in `docs/evidence/` |
 
@@ -99,5 +100,5 @@ The seven planted flaws and the five unplanned weaknesses (O1 to O5) are fixed; 
 ## Next steps
 
 1. Merge #13 (O1 to O3), #14 (account controls) and the repository hygiene pull request into `secure`, then `secure` into `main`.
-2. Run the two planned drills (P1 with a forged session, P2 with the Falco demo) and record them in the incident response plan.
+2. Rehearse P1 and P2 as a team, without the scripts, and record the times.
 3. Step 10: review and complete the French report (`docs/rapport/`), then the slides, the Annexe B sheets and the AI declaration.
