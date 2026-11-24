@@ -19,7 +19,7 @@ All seven planted flaws were documented, exploited, then fixed and re-tested. Th
 | 7. Fix each flaw and re-test | Done: all seven fixed and re-tested, merged into `secure` |
 | 8. Revoke-then-purge demonstration | Done: revoked, verified, purged and verified (`docs/f05-revoke-then-purge.md`) |
 | 9. Runtime detection and incident response plan | Done (merged into `main` through #11 and #12); P1 and P2 drills run as technical run-throughs on 2026-11-24, team rehearsal planned |
-| 10. Report, slides, contribution sheet and AI declaration | AI log started |
+| 10. Report, slides, contribution sheet and AI declaration | Report written (`docs/rapport/`), only team information left; defence deck and talk script built (`docs/presentation/DocVault-soutenance.pptx`), visual check in PowerPoint pending; Annexe B template ready, sheets to fill; AI log up to date |
 
 ## Completed
 
@@ -101,4 +101,4 @@ The seven planted flaws and the five unplanned weaknesses (O1 to O5) are fixed; 
 
 1. Merge #13 (O1 to O3), #14 (account controls) and the repository hygiene pull request into `secure`, then `secure` into `main`.
 2. Rehearse P1 and P2 as a team, without the scripts, and record the times.
-3. Step 10: review and complete the French report (`docs/rapport/`), then the slides, the Annexe B sheets and the AI declaration.
+3. Step 10, team only: fill in the report's placeholders, the Annexe B sheets and the AI log's validation column; open the deck in PowerPoint and check every slide; rehearse the talk.
