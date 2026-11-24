@@ -1,0 +1,37 @@
+# Dependabot keeps the pinned versions current. Each update arrives as a pull
+# request and must pass the same seven required checks as any other change.
+#
+# The cooldown matches the project's pinning rule: only adopt a release once
+# it has been public for at least two weeks, so a bad or malicious release has
+# time to be noticed. Security updates (repository setting "Dependabot security
+# updates") are not delayed by it.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    groups:
+      python:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # The base image in backend/Dockerfile, pinned by digest.
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14

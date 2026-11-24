@@ -22,7 +22,7 @@
     <path d="M1400 770V796" marker-end="url(#arrow)"/>
   </g>
   <text x="1230" y="206" font-size="16" fill="#5b6478" text-anchor="middle">échec</text>
-  <text x="816" y="342" font-size="18" fill="#5b6478">image approuvée</text>
+  <text x="816" y="342" font-size="18" fill="#5b6478">image construite</text>
 
   <!-- 1. GitHub repository -->
   <rect x="60" y="150" width="280" height="150" rx="14" fill="#ffffff" stroke="#13213c" stroke-width="2"/>
@@ -54,12 +54,12 @@
   <!-- 3. Build blocked -->
   <rect x="1260" y="150" width="280" height="150" rx="14" fill="#fdecea" stroke="#d64545" stroke-width="2.5"/>
   <text x="1400" y="208" font-size="26" font-weight="700" fill="#13213c" text-anchor="middle">Build bloqué</text>
-  <text x="1400" y="244" font-size="20" fill="#3c4558" text-anchor="middle">Rien n'est déployé</text>
+  <text x="1400" y="244" font-size="20" fill="#3c4558" text-anchor="middle">Fusion refusée</text>
   <text x="1400" y="272" font-size="20" fill="#3c4558" text-anchor="middle">L'échec sert de preuve</text>
 
   <!-- 4. Kubernetes cluster -->
   <rect x="60" y="370" width="1140" height="400" rx="16" fill="#f4f6fa" stroke="#13213c" stroke-width="2"/>
-  <text x="80" y="406" font-size="24" font-weight="700" fill="#13213c">Cluster Kubernetes (Minikube)</text>
+  <text x="80" y="406" font-size="24" font-weight="700" fill="#13213c">Cluster Kubernetes (kind)</text>
 
   <rect x="80" y="420" width="1100" height="60" rx="10" fill="#fdf0eb" stroke="#e8745a" stroke-width="2"/>
   <text x="100" y="457" font-size="20" fill="#13213c"><tspan font-weight="700">Kyverno</tspan> : rejette toute charge non durcie (root, privilégiée, sans limites)</text>
@@ -104,9 +104,9 @@
   <!-- 6. Observability -->
   <rect x="1260" y="590" width="280" height="180" rx="14" fill="#ffffff" stroke="#13213c" stroke-width="2"/>
   <g text-anchor="middle">
-    <text x="1400" y="636" font-size="26" font-weight="700" fill="#13213c">Observabilité</text>
-    <text x="1400" y="672" font-size="20" fill="#3c4558">Prometheus · Loki</text>
-    <text x="1400" y="699" font-size="20" fill="#3c4558">Grafana</text>
+    <text x="1400" y="636" font-size="26" font-weight="700" fill="#13213c">Détection</text>
+    <text x="1400" y="672" font-size="20" fill="#3c4558">Alertes applicatives DV-A</text>
+    <text x="1400" y="699" font-size="20" fill="#3c4558">Falco DV-R</text>
     <text x="1400" y="734" font-size="20" font-weight="700" fill="#1f8f7e">Détection d'attaque</text>
   </g>
 
@@ -119,5 +119,8 @@
 
   <!-- 7. Incident response -->
   <rect x="60" y="800" width="1480" height="70" rx="14" fill="#13213c"/>
-  <text x="800" y="843" font-size="22" fill="#ffffff" text-anchor="middle"><tspan font-weight="700">Plan de réponse :</tspan> Détecter → Contenir → Éradiquer → Rétablir → Apprendre</text>
+  <!-- Two text elements rather than one with a bold tspan: some renderers
+       (cairosvg) misplace a centred tspan. -->
+  <text x="592" y="843" font-size="22" font-weight="700" fill="#ffffff" text-anchor="end">Plan de réponse :</text>
+  <text x="600" y="843" font-size="22" fill="#ffffff" text-anchor="start">Détecter → Contenir → Éradiquer → Rétablir → Apprendre</text>
 </svg>

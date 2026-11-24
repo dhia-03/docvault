@@ -14,6 +14,10 @@ The build fails on any exposed secret and on any high-impact issue that we can a
 | Dynamic testing, after deployment to a throwaway kind cluster | OWASP ZAP | Any `High` risk alert | This covers exploitable behavior on the running application, such as SQL injection. `Medium` alerts are often missing headers and are tracked instead of blocking | Active |
 | Runtime detection, after deployment (same job as ZAP) | Application alerts and Falco | Any application alert DV-A1 to DV-A4, or Falco rule DV-R1 to DV-R3, that does not fire when its demo triggers it; or any DocVault Falco alert during a normal deploy | Detection that silently stops working gives false confidence, and a noisy rule gets ignored. Both are checked on every run. DV-R4 is reported but not required | Active |
 
+## Keeping dependencies current
+
+[Dependabot](../.github/dependabot.yml) opens weekly pull requests for the Python packages, the GitHub Actions and the Docker base image. It waits 14 days after a release, like the project's own pinning rule, so a bad release has time to be noticed; security updates are not delayed. Its pull requests must pass the same required checks as any other change. Dependabot alerts and security updates are enabled in the repository settings (2026-11-24).
+
 ## Deliberately vulnerable version
 
 The initial version is expected to fail this pipeline. Those failures are kept as evidence, and no exception is used to make that version pass.
@@ -33,7 +37,7 @@ An exception is allowed only when all of these are recorded in the register belo
 
 These durations are judgments sized to a short project and are not an external benchmark. No exception may remain open at final submission.
 
-Each exception is approved by the project owner. In a one-person project the author also approves the exception, so there is no separation of duties. This is a known weakness.
+Each exception is approved by a team member other than its author, normally M2 (CI and secrets), in the pull request that adds it. Only the repository owner has write access on GitHub and pull requests need no approval there, so this separation of duties is a team rule, not enforced by GitHub. This is a known weakness.
 
 ## Exception register
 

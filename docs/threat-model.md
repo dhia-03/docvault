@@ -2,7 +2,7 @@
 
 Unauthorized access to confidential documents is DocVault's main risk, so access control, file handling and secret protection get the most attention.
 
-This model uses STRIDE and maps to [OWASP Top 10:2025](https://github.com/OWASP/Top10/tree/master/2025/docs/en). It describes the planned design as of 2026-11-09. No application code exists yet, so exact code locations will be recorded in the vulnerability register when each flaw is built, before it is fixed.
+This model uses STRIDE and maps to [OWASP Top 10:2025](https://github.com/OWASP/Top10/tree/master/2025/docs/en). It was written on 2026-11-09, before the application code, from the planned design; code locations are recorded in the vulnerability register. The controls column was updated as the controls were built.
 
 Risk ratings are qualitative judgments, not measurements.
 

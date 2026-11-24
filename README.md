@@ -2,9 +2,9 @@
 
 DocVault is a web application for storing and sharing confidential documents. It is built for a DevSecOps course project: it starts with deliberate security flaws, then is secured across its lifecycle, from source code to runtime monitoring.
 
-The project is in early development. See [docs/DEVELOPMENT_PROGRESS.md](docs/DEVELOPMENT_PROGRESS.md) for its current status.
+`main` holds the secured application: the seven planted flaws are fixed, the CI blocks on seven security checks, and the Kubernetes deployment is hardened and watched at runtime. The deliberately vulnerable starting point is kept as the tag `v0-vulnerable`. See [docs/DEVELOPMENT_PROGRESS.md](docs/DEVELOPMENT_PROGRESS.md) for the status and the evidence, and [docs/rapport/](docs/rapport/) for the final report.
 
-> Deliberately vulnerable versions of this application must only run locally or in a dedicated test environment.
+> The deliberately vulnerable version (tag `v0-vulnerable`) must only run locally or in a dedicated test environment.
 
 ## Repository layout
 

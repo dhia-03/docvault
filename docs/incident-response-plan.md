@@ -2,7 +2,7 @@
 
 This plan says what the team does when DocVault may be under attack or a secret may be exposed: who leads, how fast, which commands to run, and how to prove the problem is fixed. It covers the project period and the demo. It is written for a four-person student team with no on-call rota, so the response targets are best effort during working hours.
 
-Status on 2026-11-23: draft, not yet exercised. No drill has been run (see [Drills](#9-drills)). The application alerts (DV-A1 to DV-A4) and the Falco rules (DV-R1 to DV-R4) are being built in parallel and are not in `main` yet. Commands marked *(untested)* have not been run against a live environment; the first drills must confirm them.
+Status on 2026-11-24: not yet exercised; no drill has been run (see [Drills](#9-drills)). The application alerts (DV-A1 to DV-A4) and the Falco rules (DV-R1 to DV-R4) are in `main` and proven on every CI run. Commands marked *(untested)* have not been run against a live environment; the first drills must confirm them.
 
 The phases follow the classic cycle from NIST SP 800-61. The assets (AS1 to AS6) and threats (T01 to T18) are those of the [threat model](threat-model.md). Fixed flaws (F01 to F07) and open weaknesses (O1 to O3) are in the [vulnerability register](vulnerability-register.md).
 
@@ -93,16 +93,18 @@ These targets are sized for students working part-time and are not a service com
 
 ### Default severity per alert
 
-| Source | ID | Alert severity | Default level | Raise when |
+The third column is the severity written in the alert itself (Falco's own priority scale for DV-R). The incident level is the team's decision and can be higher: a Falco "Warning" for a shell in a container is still a SEV1 until a team member explains it.
+
+| Source | ID | Severity in the alert | Default level | Raise when |
 | --- | --- | --- | --- | --- |
 | App | DV-A1 `brute_force_suspected` | Medium | SEV3 | SEV2 if a `login` for the targeted account follows the failures; SEV1 if that account then did something its owner denies |
 | App | DV-A2 `forged_session` | High | SEV2 | SEV1 if the current signing key may be exposed, or the audit log shows actions nobody on the team made |
 | App | DV-A3 `access_probing` | Medium | SEV2 | SEV1 if the account obtained a document it had no right to |
 | App | DV-A4 `privilege_probe` | Low | SEV3 | SEV2 if it comes with DV-A3 or an unexpected role change; SEV1 if a non-admin got an admin page |
-| Falco | DV-R1 shell in a DocVault container | High | SEV1 | Not an incident if a team member's `kubectl exec` explains it |
-| Falco | DV-R2 unexpected program in the app container | High | SEV1 | Same |
-| Falco | DV-R3 sensitive file read | High | SEV1 | Same |
-| Falco | DV-R4 unexpected outbound connection *(may not exist)* | Medium | SEV2 | SEV1 if the connection succeeded, because the network policy then failed |
+| Falco | DV-R1 shell in a DocVault container | Warning | SEV1 | Not an incident if a team member's `kubectl exec` explains it |
+| Falco | DV-R2 unexpected program in the app container | Warning | SEV1 | Same |
+| Falco | DV-R3 sensitive file read | Critical | SEV1 | Same |
+| Falco | DV-R4 unexpected outbound connection | Warning | SEV2 | SEV1 if the connection succeeded, because the network policy then failed |
 | CI | Gitleaks finds a real secret | n/a | SEV1 | A confirmed false positive is not an incident: record an exception by fingerprint |
 | GitHub | Secret scanning alert or push protection block | n/a | SEV1 if the value is real | Enabled on 2026-11-23 |
 | CI | Trivy `HIGH` or `CRITICAL` with a fix, on `main` | n/a | SEV2 (`CRITICAL`), SEV3 (`HIGH`) | SEV1 if it is exploitable in DocVault, like F06 was |
@@ -755,7 +757,7 @@ Each drill follows the relevant playbook for real, with real evidence capture, a
 
 | Date | Scenario | Alert that fired | Time to detect | Time to contain | What went wrong | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| To be scheduled | P2 drill using the detection demo (`scripts/security/detection-demo.sh`, being built) | | | | | Planned, not done |
+| To be scheduled | P2 drill using the detection demo (`scripts/security/detection-demo.sh`) | | | | | Planned, not done |
 | To be scheduled | P1 drill: DV-A2 forged session (`run_all.py` with a random `DOCVAULT_LEAKED_KEY`, then a key rotation) | | | | | Planned, not done |
 
 ## 10. Known limits
