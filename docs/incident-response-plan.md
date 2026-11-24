@@ -156,17 +156,17 @@ docker compose logs --timestamps app | grep security_alert
 kc -n falco logs -l app.kubernetes.io/name=falco --tail=-1 --timestamps
 ```
 
-Exporting the audit log. The `/audit` page shows only the latest 200 entries, so export the whole table *(untested on PostgreSQL)*:
+Exporting the audit log. The `/audit` page shows only the latest 200 entries. An admin or auditor exports the whole table as CSV with the "Export everything as CSV" link on that page (`/audit/export.csv`; values a spreadsheet would run as formulas are neutralised, and the export itself is audited). Save it as `$IR/audit_logs.csv`. If the app is down, export it from the database instead:
 
 ```bash
-AUDIT_SQL="COPY (SELECT id, created_at, actor, action, target FROM audit_logs ORDER BY id) TO STDOUT WITH CSV HEADER"
+AUDIT_SQL="COPY (SELECT id, created_at, actor, action, target, ip, request_id FROM audit_logs ORDER BY id) TO STDOUT WITH CSV HEADER"
 # kind:
 kc -n docvault exec statefulset/db -c postgres -- psql -U docvault -d docvault -c "$AUDIT_SQL" > "$IR/audit_logs.csv"
 # Compose:
 docker compose exec -T db psql -U docvault -d docvault -c "$AUDIT_SQL" > "$IR/audit_logs.csv"
 ```
 
-The audit log records `login`, `login_failed`, `upload`, `download`, `share`, `update_metadata`, `delete`, `create_user` and `change_role`, with the actor, the target and the time. It does not record the client address, detail-page views, previews or refused requests.
+The audit log records `login`, `login_failed`, `login_disabled`, `upload`, `download`, `preview`, `share`, `update_metadata`, `delete`, `create_user`, `change_role`, `reset_password`, `revoke_sessions`, `disable_account`, `enable_account`, `change_password`, `change_password_failed` and `export_audit`, with the actor, the target, the time, the client address and the request ID. It does not record detail-page views or refused requests; those are in the application's security events, which carry the same request ID. Every response returns that ID in its `X-Request-ID` header, so a user's report can be matched to the log.
 
 At the end of evidence capture, fingerprint the files so later changes can be detected:
 
@@ -177,6 +177,8 @@ At the end of evidence capture, fingerprint the files so later changes can be de
 ### P1: leaked or forged signing key
 
 **Trigger:** DV-A2; Gitleaks fails on a real secret (CI `Secret scan (Gitleaks)` or `bash scripts/ci/scan.sh gitleaks`); a GitHub secret scanning alert or push protection block; a member reports pasting a key or `.env` somewhere.
+
+**A leaked key or one stolen session?** If one user's cookie was stolen (a shared computer, a copied browser profile) but the key is safe, an admin clicks "Sign out everywhere" for that user on `/admin/users`: only that user's sessions end. Rotate the key only when the key itself may be known.
 
 **What DV-A2 does and does not tell you.** DV-A2 fires when a cookie's signature does not match the current key, so the forged session was *refused*. The most likely source is the old F05 key, which anyone could copy while the repository was public; seeing it means the revocation is working. The dangerous case is the opposite: if the *current* key leaks, forged cookies are valid and raise no alert. That case is found through Gitleaks, GitHub secret scanning, or audit entries nobody made.
 
@@ -432,14 +434,15 @@ The `quarantine` policy can stay: it selects no pod once the quarantined one is 
 
 | Option | Exists? | How |
 | --- | --- | --- |
-| Reset the account's password from the admin page | **No.** `/admin/users` can only create users and change roles. There is no password change, reset or account disable route | — |
+| Reset the account's password from the admin page | Yes | `/admin/users`, "Reset password". It also signs the user out everywhere and lifts a login lock. Give the new password to the owner by phone or in person, never in the team chat; the owner then changes it on `/account` |
 | Change the password directly in the database | Yes, by hand *(tested on SQLite only)* | Snippet below. The account owner chooses the new password and runs it, so it never goes through chat |
-| Sign out an attacker who already got in | Only by rotating the signing key, which signs out everyone | P1 rotation |
+| Sign out an attacker who already got in | Yes, for one account | `/admin/users`, "Sign out everywhere" (or a password reset, which does it too) |
+| Disable the account while investigating | Yes | `/admin/users`, "Disable". Its sessions end at once; sign-in answers like a wrong password, and the audit log records `login_disabled` |
 | Block the source address | Not in the current setups: there is no reverse proxy or firewall in front of the app, and in kind the app may see the node address for every client (not verified) | — |
-| Lift a lock early (the real owner is locked out) | Only by restarting the app, which clears the in-memory counters: `kc -n docvault rollout restart deployment/docvault`. Otherwise wait 5 minutes | — |
+| Lift a lock early (the real owner is locked out) | Yes | A password reset from `/admin/users` lifts it. Otherwise wait 5 minutes, or restart the app (`kc -n docvault rollout restart deployment/docvault`), which clears every lock |
 | Cut access entirely | Yes | kind: `kc -n docvault delete service docvault-test-access` (restore with `kc apply -f deploy/test/access.yaml`). Compose: `docker compose stop app` |
 
-Emergency password change. The first line of standard input is the username, the second the new password; nothing appears in the process list. In kind it runs in the app container, which has the database password *(untested in a container)*:
+Fallback, when no admin can sign in (for example the admin account itself is compromised): an emergency password change in the database. The first line of standard input is the username, the second the new password; nothing appears in the process list. In kind it runs in the app container, which has the database password *(untested in a container)*:
 
 ```bash
 kc -n docvault exec -i deploy/docvault -c app -- python -c '
@@ -462,7 +465,7 @@ print("Password changed for", username)
 # Compose: replace the first line with  docker compose exec -T app python -c '...
 ```
 
-This runs a program in the app container, so Falco will raise DV-R2: announce it first. A password change does not end existing sessions; rotate the key if the account was used by someone else.
+This runs a program in the app container, so Falco will raise DV-R2: announce it first. This fallback does not end existing sessions: afterwards, sign the user out everywhere from `/admin/users`, or rotate the key if no admin account can be trusted.
 
 **Eradication**
 
@@ -504,14 +507,14 @@ The per-username lock (O2 fix, [`login_throttle.py`](../backend/app/login_thrott
   SQL
   ```
   Each row is a download by someone without a current right to the document. Rows with no owner are deleted documents: check them by hand.
-- Detail pages and previews are not in the audit log. Look for successful ones in uvicorn's access log, which records the path and status but not the user:
+- Previews are in the audit log (`preview`). Detail pages are not; look for successful ones in uvicorn's access log, which records the path and status but not the user:
   `grep -E '"GET /documents/[0-9]+(/preview|/download)? HTTP/[0-9.]+" 200' "$IR/app.log"`
 - Which owners are affected? The query's `owner` column lists them.
 
 **Containment**
 
 - If an access succeeded, the access check has a hole. Cut access (`kc -n docvault delete service docvault-test-access`, or `docker compose stop app`) until it is fixed.
-- If the account is misused by someone else: change its password (P3) and rotate the key to end its session (P1). There is no way to disable an account.
+- If the account is misused by someone else: disable it on `/admin/users` while investigating (its sessions end at once), then reset its password (P3) and enable it again.
 - If only denials were seen, the control held: keep watching and record it.
 
 **Eradication**
@@ -762,8 +765,8 @@ Each drill follows the relevant playbook for real, with real evidence capture, a
 - **A valid forgery is silent.** DV-A2 sees only cookies with a bad signature. If the current key leaks, forged sessions look legitimate.
 - **No central log storage, retention or paging.** Alerts are lines on stdout. They are lost when the pod or container is deleted, and nobody is woken up. Someone must be watching.
 - **Falco runs only in the kind test cluster.** Compose and CI have no runtime detection. Our own `kubectl exec` commands also trigger DV-R1 and DV-R2, and the `prepare` init container starts a shell (`sh -c`) at each pod start, which DV-R1 must not count.
-- **The audit log is incomplete and not tamper-proof.** It has no client address, no correlation ID (planned under T08), no record of views, previews or refused requests, and it lives in the same database the app account can write. A compromised app pod could edit it. The `/audit` page shows only the latest 200 entries.
-- **No account controls.** There is no password change, reset, lockout or disable feature, and no way to end one user's session: rotating the key signs everyone out.
+- **The audit log is incomplete and not tamper-proof.** It records the client address and request ID, but not detail-page views or refused requests (those are only in the security events on stdout). It lives in the same database the app account can write, so a compromised app pod could edit it.
+- **Account controls are admin-only.** Admins can reset passwords, disable accounts and sign one user out everywhere, and users can change their own password, but there is no self-service reset by e-mail and no multi-factor sign-in. A compromised admin account can do all of this too; disable it from another admin account.
 - **Login lock per username only (O2 fix).** It stops guessing against one account, not credential stuffing spread over many usernames, and anyone can lock a known account for 5 minutes.
 - **No HTTPS locally.** Compose and kind run on plain HTTP with `SESSION_COOKIE_SECURE=false`, so cookies are not protected in transit there.
 - **Network blocking is coarse.** There is no reverse proxy or firewall in front of the app. Blocking one address is not possible in the current setups, and in kind the app may not see real client addresses.

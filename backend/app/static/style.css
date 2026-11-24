@@ -47,6 +47,7 @@ button { font: inherit; padding: 0.4rem 0.9rem; cursor: pointer; }
 button.danger { color: var(--danger); }
 
 .error { color: var(--danger); }
+.notice { color: var(--ok, #1a7f37); }
 
 dt { font-weight: 600; }
 

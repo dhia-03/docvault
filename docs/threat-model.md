@@ -71,7 +71,7 @@ flowchart LR
 | T05 | Tampering | Document storage | Crafted file name writes outside the storage folder | High | Server-generated storage names; path checks | F04 |
 | T06 | Tampering | Dependencies and image | Vulnerable or compromised third-party component | High | Pinned versions, dependency and image scans | F06 |
 | T07 | Tampering | CI pipeline | Workflow abused to alter a build | Medium | Read-only token, actions and images pinned by digest | |
-| T08 | Repudiation | Sharing and deletion | User denies sharing or deleting a document | Medium | Audit log with user, action, time and correlation ID | |
+| T08 | Repudiation | Sharing and deletion | User denies sharing or deleting a document | Medium | Audit log with user, action, time, client address and request ID, exportable as CSV | |
 | T09 | Information disclosure | Document download | Changing a document ID opens another user's file | High | Ownership or share check on every request | F01 |
 | T10 | Information disclosure | Search | SQL injection extracts documents or password hashes | High | Parameterized queries, limited database account | F02 |
 | T11 | Information disclosure | Document storage | Path traversal reads files outside the storage folder | High | Look up files by ID, never by user-supplied path | F04 |

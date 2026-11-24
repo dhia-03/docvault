@@ -23,6 +23,8 @@ from collections import deque
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from app import request_context
+
 ALLOWED_FIELDS = (
     "rule",
     "name",
@@ -38,6 +40,7 @@ ALLOWED_FIELDS = (
     "count",
     "window_seconds",
     "seconds",
+    "request_id",
 )
 MAX_TEXT_LENGTH = 100
 MAX_TRACKED = 10_000
@@ -93,6 +96,8 @@ def emit(event: str, **fields: object) -> None:
         "ts": datetime.now(UTC).isoformat(timespec="milliseconds"),
         "event": event,
     }
+    # The ID of the request being handled, shared with the audit log.
+    fields.setdefault("request_id", request_context.request_id())
     for key in ALLOWED_FIELDS:
         if fields.get(key) is not None:
             record[key] = _clean(fields[key])
@@ -161,10 +166,15 @@ def login_succeeded(username: str, ip: str | None) -> None:
     emit("login_succeeded", username=username, ip=ip)
 
 
-def invalid_session(ip: str | None, path: str, expired: bool) -> None:
-    """A session cookie failed its check. Only a bad signature is an alert."""
-    emit("invalid_session", ip=ip, path=path, reason="expired" if expired else "bad_signature")
-    if not expired:
+def invalid_session(ip: str | None, path: str, reason: str) -> None:
+    """A session cookie failed its check. Only a bad signature is an alert.
+
+    Reasons: "bad_signature" (forged, or signed with an old key), "expired",
+    "revoked" (the user's sessions were revoked or the password changed),
+    "disabled" (the account was disabled), "unknown_user".
+    """
+    emit("invalid_session", ip=ip, path=path, reason=reason)
+    if reason == "bad_signature":
         count = _observe(FORGED_SESSION, f"ip:{ip}")
         if count is not None:
             _alert(FORGED_SESSION, count, ip=ip, path=path)

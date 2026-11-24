@@ -26,6 +26,7 @@ All seven planted flaws were documented, exploited, then fixed and re-tested. Th
 - Vulnerable application with login, three roles, upload, search, sharing, admin pages and an audit log
 - Vulnerability register for F01 to F07
 - Runtime detection: application alerts DV-A1 to DV-A4 and Falco rules DV-R1 to DV-R4, each proven by a demo in the `DAST (ZAP)` job ([runtime-detection.md](runtime-detection.md))
+- Account controls for incident response: admin password reset, disable and enable, sign one user out everywhere (session version in the cookie), own password change; audit log with client address and request ID, CSV export (on `feat/account-controls`, not merged yet)
 - Incident response plan with seven playbooks ([incident-response-plan.md](incident-response-plan.md)); no drill run yet
 - Repository made public on 2026-11-22, so that `main` can require the checks (branch protection is not available on private repositories in the free plan)
 - `main` protection: pull request required, all seven checks (five static, ZAP and the tests) must pass, applies to admins
@@ -70,6 +71,7 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 | History purge, 2026-11-23 | Fresh clone: old value found 0 times in any commit; Gitleaks clean on working tree and 22 commits |
 | Step 9 end to end on a fresh kind cluster, 2026-11-23 | Deploy checks passed with Falco quiet; app demo: DV-A1 to DV-A4 detected; ZAP passed; Falco demo: DV-R1 to DV-R4 detected (7 of 7 checks) |
 | O1 to O3 on a fresh kind cluster, 2026-11-24 | Deploy checks passed, Falco quiet; DV-A1 to DV-A4 and DV-R1 to DV-R4 detected; ZAP passed. ZAP's fuzzing of the login form locked `alice` (209 failures, then 213 attempts refused with 429), while ZAP kept its session (582 authenticated page loads) |
+| Account controls, 2026-11-24 | 76 tests passed; upgrade from migration 0001 to 0003 on PostgreSQL with existing data; on Compose: revoke, disable, enable, CSV export with address and request ID checked; `run_all.py` 0 tested flaws exploitable; DV-A1 to DV-A4 detected |
 | CI run 45083855384, 2026-11-23 | ZAP blocked with the same 4 High alerts, plus one false positive on `/documents/1/share`; report in `docs/evidence/` |
 | CI run 45071375296 on pull request #2, 2026-11-22 | All five checks failed with the same results as locally; log in `docs/evidence/` |
 
@@ -96,5 +98,5 @@ The seven planted flaws and the five unplanned weaknesses (O1 to O5) are fixed; 
 
 1. Merge the step 9 pull request into `secure`, then `secure` into `main`.
 2. Run the two planned drills (P2 with the Falco demo, P1 with a forged session) and record them in the plan.
-3. Decide on the gaps the incident response plan found: no password reset or account disable, no way to sign out one user, audit log without client address or correlation ID, Dependabot off, `secure` not protected.
+3. Turn on Dependabot and protect `secure` (the last gaps the incident response plan found).
 5. Step 10: report, slides, Annexe B sheets and the AI declaration.
