@@ -2,7 +2,7 @@
 
 **Rapport final du projet DevSecOps**
 
-> **État du brouillon (2026-11-24).** Tous les chapitres (résumé, tableau de conformité, chapitres 1 à 15, annexes A à C) sont rédigés à partir des documents du dépôt. Restent à compléter par l'équipe, aux endroits marqués **[À compléter]** : la page de garde (date de remise), l'attribution des rôles M1 à M4 (§2.1), l'Annexe A (§2.2), la protection de `secure` (§2.3), les fiches Annexe B (§2.5), la figure d'architecture (§3.1), les captures et la sauvegarde des journaux CI (§6.5, Annexe C), Dependabot (§6.7), les corrections O1 à O3 (§9.9), la décision sur le support GitHub (§10.4), les contrôles de compte et le journal d'audit (§12.4), les exercices P1 et P2 (§12.5), la validation de l'usage de l'IA (§14.4) et la mise à jour du bilan (§15.1). Ce bloc est à retirer avant la remise.
+> **État du brouillon (2026-11-24).** Tous les chapitres sont rédigés à partir des documents et des résultats du dépôt, y compris les travaux du 2026-11-24 (O1 à O3, contrôles de compte, Dependabot, protection de `secure`, exercices). Ne restent, aux endroits marqués **[À compléter]**, que les informations que seule l'équipe peut fournir : la date de remise, l'attribution des rôles M1 à M4 (§2.1), l'Annexe A (§2.2), les dates de fusion des PR #13 à #15 et de celle de ce rapport (§2.4), les fiches Annexe B (§2.5, [modèle](annexe-b-modele.md)), les captures (§6.5, Annexe C), la décision sur le support GitHub (§10.4) et la validation de l'usage de l'IA (§14.4). Ce bloc est à retirer avant la remise.
 
 | | |
 | --- | --- |
@@ -11,7 +11,7 @@
 | Référence | Cahier des charges du projet DevSecOps |
 | Équipe | Chaima Khaalsi, Sourour Kraiem, Dhia Medhioub, Rania Khalfet |
 | Dépôt | `dhia-03/docvault` sur GitHub (public depuis le 2026-11-22) |
-| Version du rapport | Brouillon du 2026-11-24 |
+| Version du rapport | 2026-11-24 |
 | Date de remise | Voir l'encadré ci-dessous |
 
 > **[À compléter]** Date de remise du rapport (et année universitaire si elle doit figurer sur la page de garde). Le cahier des charges ne contient pas les sections 7 et 8, et la date n'était pas connue au 2026-11-23 ([DEVELOPMENT_PROGRESS.md](../DEVELOPMENT_PROGRESS.md#open-questions)).
@@ -32,7 +32,7 @@ Ce qui est en place et démontré :
 - **Une détection à l'exécution en deux couches** : quatre alertes applicatives (DV-A1 à DV-A4) et quatre règles Falco (DV-R1 à DV-R4). Chaque règle est déclenchée et vérifiée à chaque run CI.
 - **Un plan de réponse aux incidents** avec sept playbooks, des niveaux de sévérité et un modèle de revue post-incident.
 
-Ce qui reste à faire au moment de ce brouillon : les deux exercices du plan de réponse, la correction des faiblesses non planifiées O1 à O3, des contrôles de compte (réinitialisation, désactivation, révocation de session par utilisateur), Dependabot et la protection de la branche `secure`. Ces points sont marqués **[À compléter]** dans le rapport.
+Nous avons aussi corrigé les trois faiblesses découvertes en chemin (CSRF, limitation des connexions, limites de téléversement), ajouté les contrôles de compte dont la réponse aux incidents avait besoin, activé Dependabot, et exercé deux playbooks du plan de réponse.
 
 Notre principal constat : les outils statiques ne trouvent que 4 failles sur 7. ZAP en trouve deux de plus (F03, F04), et seule la suite de tests trouve F01. Un pipeline vert ne prouve donc pas que l'application est sûre. Le [chapitre 13](#13-réflexion-critique-et-limites) détaille ce que nos contrôles ne prouvent pas.
 
@@ -51,10 +51,10 @@ Ce tableau reprend les huit exigences obligatoires (le « socle ») et les exige
 | 5 | Déploiement Kubernetes durci, avec contrôle d'admission | Fait (cluster kind) | [§7](#7-conteneur-et-déploiement-kubernetes-durcis) | [deploy/k8s/](../../deploy/k8s/), [deploy/kyverno/](../../deploy/kyverno/pod-security.yaml), [deploy.sh](../../scripts/ci/deploy.sh) ; run 45106603478, job `DAST (ZAP)` : pod refusé par les 4 politiques, base injoignable depuis un autre namespace |
 | 6 | Tests dynamiques : DAST authentifié dans le pipeline après déploiement, au moins 2 failles confirmées | Fait : F02, F03, F04 | [§8](#8-tests-dynamiques-dast) | [dast.sh](../../scripts/ci/dast.sh), [plan.yaml](../../scripts/ci/zap/plan.yaml), [zap_gate.py](../../scripts/ci/zap_gate.py) ; rapport du run 45083855384 : [HTML](../evidence/zap-run-45083855384-vulnerable-baseline.html), [JSON](../evidence/zap-run-45083855384-vulnerable-baseline.json) |
 | 7 | Détection à l'exécution | Fait : deux couches, démontrées en CI | [§11](#11-détection-à-lexécution) | [runtime-detection.md](../runtime-detection.md), [security_events.py](../../backend/app/security_events.py), [docvault_rules.yaml](../../deploy/falco/docvault_rules.yaml) ; run 45106603478 : DV-A1 à DV-A4 et DV-R1 à DV-R4 détectées |
-| 8 | Plan de réponse aux incidents | Rédigé ; exercices non encore réalisés | [§12](#12-plan-de-réponse-aux-incidents) | [incident-response-plan.md](../incident-response-plan.md) ; exercices : **[À compléter]** |
+| 8 | Plan de réponse aux incidents | Fait : rédigé, deux exercices techniques réalisés | [§12](#12-plan-de-réponse-aux-incidents) | [incident-response-plan.md](../incident-response-plan.md) ; exercices P1 et P2 : [compte rendu](../evidence/drills/2026-11-24-p1-p2.md) |
 | — | Équipe de 3 à 4 étudiants | 4 étudiants | [§2](#2-équipe-et-organisation) | Page de garde ; [point d'avancement du 18/11](../point-avancement-2026-11-18.md) |
 | — | Validation du thème (Annexe A) | Rédigée, validation en attente | [§2.2](#22-validation-du-thème-annexe-a) | **[À compléter]** |
-| — | Une fiche de contribution (Annexe B) par personne | À rédiger | [§2.5](#25-fiches-de-contribution-annexe-b) | **[À compléter]** |
+| — | Une fiche de contribution (Annexe B) par personne | Modèle fourni, fiches à remplir par chaque membre | [§2.5](#25-fiches-de-contribution-annexe-b) | **[À compléter]** |
 | — | Déclaration de tout usage de l'IA | Journal tenu ; validation par l'équipe à compléter | [§14](#14-déclaration-dusage-de-lia) | [ai-usage.md](../ai-usage.md) |
 
 ---
@@ -167,6 +167,7 @@ flowchart LR
 | `vulnerable-baseline` | Version vulnérable, taguée `v0-vulnerable`. La pull request #2, en brouillon, sert uniquement à conserver les échecs CI comme preuve |
 | `fix/fNN-*` | Une branche par faille, fusionnée dans `secure` par une pull request |
 | `feat/app-detection` | Détection à l'exécution et plan de réponse (étape 9) |
+| `fix/o1-o3`, `feat/account-controls`, `chore/hygiene` | Faiblesses O1 à O3, contrôles de compte pour la réponse aux incidents, Dependabot, cohérence des documents et exercices (PR #13 à #15, empilées : chacune part de la précédente) |
 | `secure` | Intégration des corrections, puis fusion dans `main` par pull request |
 | `main` | Branche protégée : n'accepte que des pull requests qui passent les sept contrôles |
 
@@ -181,9 +182,9 @@ flowchart LR
 | Force-push / suppression | Interdits |
 | Approbations requises | 0 |
 
-**Protection de `secure`.** Au 2026-11-24, `secure` n'est pas protégée (l'API répond « Branch not protected »). Les pull requests de correction #3 à #9 ont donc pu être fusionnées dans `secure` alors que leurs runs CI étaient en échec. C'était attendu : chaque branche ne corrigeait qu'une faille, les autres restaient présentes. Le passage de `secure` à `main` (#10, #12) a, lui, exigé les sept contrôles au vert.
+**Protection de `secure`.** Jusqu'au 2026-11-24, `secure` n'était pas protégée. Les pull requests de correction #3 à #9 ont donc pu être fusionnées dans `secure` alors que leurs runs CI étaient en échec. C'était attendu : chaque branche ne corrigeait qu'une faille, les autres restaient présentes. Le passage de `secure` à `main` (#10, #12) a, lui, exigé les sept contrôles au vert.
 
-> **[À compléter]** Protection de la branche `secure` (travail en cours) : réglages appliqués, date, et preuve (capture ou sortie de `gh api repos/{owner}/{repo}/branches/secure/protection`).
+Une fois toutes les failles corrigées, nous avons protégé `secure` comme `main`, le 2026-11-24, par l'API GitHub. Relecture de `gh api repos/dhia-03/docvault/branches/secure/protection` le même jour : pull request obligatoire, les sept contrôles requis, branche à jour avant fusion, règle appliquée aux administrateurs, force-push et suppression interdits, 0 approbation requise.
 
 ### 2.4 Historique des pull requests
 
@@ -203,12 +204,19 @@ Horaires en UTC, d'après `gh pr list` et `gh run list`.
 | #10 | `secure` → `main` | Les sept failles corrigées, clé purgée | 2026-11-23 02:19 | 45098724265 (succès, 7 sur 7) ; push sur `main` : 45099516909 (succès) |
 | #11 | `feat/app-detection` → `secure` | Étape 9 : détection et plan de réponse | 2026-11-23 03:24 | 45104983793 (succès) |
 | #12 | `secure` → `main` | Étape 9 | 2026-11-23 03:32 | 45105825605 (succès) ; push sur `main` : 45106603478 (succès, 7 sur 7) |
+| #13 | `fix/o1-o3` → `secure` | O1 à O3 : jetons CSRF, verrouillage de connexion, limites de téléversement | En attente | 45449364945 (succès, 7 sur 7) |
+| #14 | `feat/account-controls` → `fix/o1-o3` | Contrôles de compte, identifiant de requête, journal d'audit enrichi | En attente | À relever |
+| #15 | `chore/hygiene` → `feat/account-controls` | Dependabot, protection de `secure`, cohérence des documents, exercices P1 et P2 | En attente | À relever |
+
+> **[À compléter]** Après la fusion des PR #13 à #15 (et de la pull request de ce rapport), mettre à jour leurs dates de fusion et leurs runs CI.
 
 **Note sur la PR #2.** La PR #2 n'a jamais été fusionnée à la main : elle est restée en brouillon, et un brouillon ne peut pas être fusionné. GitHub l'affiche pourtant « Merged » depuis le 2026-11-23 à 02:19:12, une seconde après la fusion de la PR #10. La branche `secure` part de `vulnerable-baseline`, donc le dernier commit de la PR #2 (`65c59a1`) est devenu un ancêtre de `main` à ce moment, et GitHub a marqué la PR comme fusionnée. Les échecs CI de la PR #2 restent consultables, et leurs journaux sont sauvegardés dans [docs/evidence/](../evidence/).
 
 ### 2.5 Fiches de contribution (Annexe B)
 
 Le cahier des charges exige une fiche de contribution par personne. Ce rapport ne décrit pas la contribution individuelle de chaque membre.
+
+Un modèle de fiche est fourni : [annexe-b-modele.md](annexe-b-modele.md).
 
 > **[À compléter]** Quatre fiches Annexe B, une par membre, signées, avec pour chacun : rôle, travaux réalisés, pull requests ou fichiers concernés, et part des travaux faits avec l'IA (en cohérence avec [ai-usage.md](../ai-usage.md)).
 
@@ -220,18 +228,16 @@ Le cahier des charges exige une fiche de contribution par personne. Ce rapport n
 
 ![Architecture DocVault : du commit à la détection d'attaque](../diagrams/architecture.png)
 
-*Figure 1. Architecture cible présentée au point d'avancement du 18/11/2026 ([source SVG](../diagrams/architecture.svg)).*
+*Figure 1. Architecture réalisée ([source SVG](../diagrams/architecture.svg)).*
 
-Cette figure montre l'architecture **cible** du 18/11. La réalisation diffère sur quatre points :
+La figure présentée au point d'avancement du 18/11 montrait l'architecture **cible** : un cluster Minikube, une observabilité Prometheus, Loki et Grafana, et un déploiement « rien n'est déployé » en cas d'échec. Nous l'avons mise à jour le 2026-11-24 pour qu'elle corresponde à la réalisation :
 
-| Sur la figure | Dans la réalisation | Raison ou référence |
+| Sur la figure du 18/11 | Dans la réalisation (figure ci-dessus) | Raison ou référence |
 | --- | --- | --- |
-| Cluster Kubernetes « Minikube » | Cluster **kind** jetable, créé par [deploy.sh](../../scripts/ci/deploy.sh) en local et sur le runner CI | Le même script tourne en local et en CI ; Minikube n'est plus nécessaire ([DEVELOPMENT_PROGRESS.md](../DEVELOPMENT_PROGRESS.md#known-limitations)) |
-| Observabilité « Prometheus, Loki, Grafana » | Événements et alertes en lignes JSON sur la sortie standard de l'application, et **Falco** pour les conteneurs | [runtime-detection.md](../runtime-detection.md). Aucune collecte centrale n'est en place (voir [§13](#13-réflexion-critique-et-limites)) |
-| Flèche « image approuvée » de l'étape bloquante vers le cluster | Le job de déploiement et de DAST **n'attend pas** les contrôles statiques. La fusion dans `main` exige, elle, tous les contrôles | Permet de scanner dynamiquement la version vulnérable ; voir [§6.6](#66-choix-le-job-de-déploiement-nattend-pas-les-contrôles-statiques) |
-| « Build bloqué, rien n'est déployé » | Rien n'est **fusionné** dans `main`. Aucune image n'est poussée vers un registre : le déploiement n'existe que sur le runner jetable | [ci.yml](../../.github/workflows/ci.yml) |
-
-> **[À compléter]** Décision de l'équipe : mettre à jour la figure (kind, Falco, pas de Grafana, déploiement non conditionné) ou la garder comme architecture cible avec le tableau ci-dessus.
+| Cluster Kubernetes « Minikube » | Cluster **kind** jetable, créé par [deploy.sh](../../scripts/ci/deploy.sh) en local et sur le runner CI | Le même script tourne en local et en CI ; Minikube n'est plus nécessaire |
+| Observabilité « Prometheus, Loki, Grafana » | **Alertes applicatives** DV-A en lignes JSON sur la sortie standard, et **Falco** (DV-R) pour les conteneurs | [runtime-detection.md](../runtime-detection.md). Aucune collecte centrale n'est en place (voir [§13](#13-réflexion-critique-et-limites)) |
+| « Image approuvée » de l'étape bloquante vers le cluster | « Image construite » : le job de déploiement et de DAST **n'attend pas** les contrôles statiques ; la fusion dans `main` exige, elle, tous les contrôles | Permet de scanner dynamiquement la version vulnérable ; voir [§6.6](#66-choix-le-job-de-déploiement-nattend-pas-les-contrôles-statiques) |
+| « Build bloqué, rien n'est déployé » | « Build bloqué, fusion refusée » : aucune image n'est poussée vers un registre, le déploiement n'existe que sur le runner jetable | [ci.yml](../../.github/workflows/ci.yml) |
 
 ### 3.2 Composants
 
@@ -297,7 +303,7 @@ Dix-huit menaces sont identifiées : 12 de risque élevé, 5 moyen, 1 faible. La
 
 | ID | Élément | Menace | Risque | Contrôle | Faille |
 | --- | --- | --- | --- | --- | --- |
-| T01 | Connexion | Devinette de mot de passe, credential stuffing | Moyen | Hachage fort, journalisation des échecs, alerte DV-A1 ; limitation des tentatives pas encore en place (O2) | |
+| T01 | Connexion | Devinette de mot de passe, credential stuffing | Moyen | Hachage fort, journalisation des échecs, alerte DV-A1, verrouillage par nom d'utilisateur (correction d'O2) | |
 | T02 | Session | Vol du cookie de session par injection de script | Élevé | Cookies `HttpOnly`, `Secure`, `SameSite` ; encodage des sorties | F03 |
 | T03 | Session | Clé de signature dans le code : sessions forgées | Élevé | Clé fournie à l'exécution, rotation après exposition | F05 |
 | T04 | Base | Injection SQL qui modifie des données ou des partages | Élevé | Requêtes paramétrées | F02 |
@@ -310,7 +316,7 @@ Dix-huit menaces sont identifiées : 12 de risque élevé, 5 moyen, 1 faible. La
 | T11 | Stockage | Traversée de répertoire qui lit hors du dossier | Élevé | Fichiers retrouvés par identifiant, jamais par un chemin fourni | F04 |
 | T12 | Dépôt, image | Secret commité ou intégré à l'image | Élevé | Secrets à l'exécution, détection de secrets, procédure « révoquer puis purger » | F05 |
 | T13 | Journaux | Mots de passe, jetons ou contenus écrits dans les journaux | Moyen | Journaux structurés avec une liste de champs autorisés, testée | |
-| T14 | Téléversement | Fichiers très volumineux ou répétés qui remplissent le stockage | Moyen | Limite de taille, quota, limites de ressources (O3 ouvert) | |
+| T14 | Téléversement | Fichiers très volumineux ou répétés qui remplissent le stockage | Moyen | Limite de taille et quota (correction d'O3), `/tmp` plafonné, limites de ressources | |
 | T15 | Recherche, connexion | Requêtes coûteuses qui épuisent l'application | Faible | Limitation de débit, limites CPU et mémoire | |
 | T16 | Pages admin | Un membre atteint les fonctions d'administration | Élevé | Contrôle de rôle côté serveur sur chaque route admin | |
 | T17 | Conteneur | Conteneur root ou privilégié qui facilite une évasion | Élevé | Non-root, racine en lecture seule, capacités retirées | F07 |
@@ -402,9 +408,9 @@ Pendant la construction et les tests, nous avons trouvé cinq faiblesses réelle
 
 | ID | Faiblesse | Trouvée par | État |
 | --- | --- | --- | --- |
-| O1 | Formulaires sans jeton CSRF ; seule protection : `SameSite=Lax` | Règles `WARNING` de Semgrep (8 formulaires), alerte ZAP `Medium` | Ouverte, voir [§9.9](#99-faiblesses-non-planifiées-o1-à-o3) |
-| O2 | Pas de limitation des tentatives de connexion (T01) | Revue de conception | Ouverte |
-| O3 | Pas de limite de taille de téléversement ni de quota (T14) | Revue de conception | Ouverte |
+| O1 | Formulaires sans jeton CSRF ; seule protection : `SameSite=Lax` | Règles `WARNING` de Semgrep (8 formulaires), alerte ZAP `Medium` | Corrigée (PR #13), voir [§9.9](#99-faiblesses-non-planifiées-o1-à-o3) |
+| O2 | Pas de limitation des tentatives de connexion (T01) | Revue de conception | Corrigée (PR #13) |
+| O3 | Pas de limite de taille de téléversement ni de quota (T14) | Revue de conception | Corrigée (PR #13) |
 | O4 | Image de base `python:3.12` : 189 vulnérabilités système HIGH ou CRITICAL corrigeables (13 critiques) | Scan d'image Trivy, 2026-11-22 | Corrigée avec F07 : 0 restante |
 | O5 | Manifests sans limites, sondes, politiques réseau ni empreintes ; l'application n'attend pas la base | Checkov et déploiement k3s | Corrigée avec F07 |
 
@@ -512,9 +518,11 @@ La conséquence est que « rien n'est déployé en cas d'échec », formule de n
 
 ### 6.7 Alertes de dépendances (Dependabot)
 
-Au 2026-11-23, les alertes Dependabot sont désactivées et la CI n'a pas d'exécution planifiée : une nouvelle vulnérabilité n'est donc détectée qu'au prochain push ou à la prochaine pull request ([plan de réponse, P6](../incident-response-plan.md#p6-vulnerable-dependency-or-image-disclosed)). La détection de secrets de GitHub (secret scanning) a été activée le 2026-11-23.
+Jusqu'au 2026-11-24, les alertes Dependabot étaient désactivées et la CI n'a pas d'exécution planifiée : une nouvelle vulnérabilité n'était donc détectée qu'au prochain push ou à la prochaine pull request ([plan de réponse, P6](../incident-response-plan.md#p6-vulnerable-dependency-or-image-disclosed)). La détection de secrets de GitHub (secret scanning) a été activée le 2026-11-23.
 
-> **[À compléter]** Activation de Dependabot (travail en cours) : alertes et/ou mises à jour automatiques, écosystèmes couverts (pip, Docker, GitHub Actions), date, et preuve (fichier `.github/dependabot.yml` s'il est ajouté, capture des réglages).
+Le 2026-11-24, nous avons activé les alertes Dependabot et les mises à jour de sécurité automatiques (réglages du dépôt, par l'API GitHub, relus ensuite : `dependabot_security_updates: enabled`). Nous avons aussi ajouté [`.github/dependabot.yml`](../../.github/dependabot.yml) : des mises à jour hebdomadaires pour les paquets Python (`pip`, dossier `backend/`), les actions GitHub et l'image de base Docker. Ces pull requests passent les mêmes sept contrôles requis que les autres.
+
+Le fichier impose un délai de 14 jours (`cooldown`) avant de proposer une nouvelle version. C'est la même règle que celle que nous avons suivie pour épingler chaque outil : n'adopter une version qu'après deux semaines de publication, pour laisser le temps de repérer une version défectueuse ou malveillante. Les mises à jour de sécurité ne sont pas retardées.
 
 ---
 
@@ -670,14 +678,17 @@ Le même scan, sur la version corrigée, ne bloque plus. Extrait du job `DAST (Z
 | Informational | High | Authentication Request Identified | 10111 | 1 | ...
 ```
 
-| | Version vulnérable (run 45083855384) | Version corrigée (run 45106603478) |
-| --- | --- | --- |
-| Alertes High | 4 (F02, F03, F04) | 0 |
-| Alertes Medium | 3 types (CSRF, CSP, clickjacking) | 1 type : CSRF (O1) |
-| Alertes Low | 2 types (HttpOnly, nosniff) | 0 |
-| Décision du gate | Bloqué | Réussi |
+| | Version vulnérable (run 45083855384) | F01 à F07 corrigées (run 45106603478) | Avec O1 à O3 (kind, 2026-11-24) |
+| --- | --- | --- | --- |
+| Alertes High | 4 (F02, F03, F04) | 0 | 0 |
+| Alertes Medium | 3 types (CSRF, CSP, clickjacking) | 1 type : CSRF (O1) | 0 |
+| Alertes Low | 2 types (HttpOnly, nosniff) | 0 | 0 |
+| Alertes informatives | | | 4 types (requête d'authentification, gestion de session, User-Agent, attribut contrôlé par l'utilisateur) |
+| Décision du gate | Bloqué | Réussi | Réussi |
 
-Le résultat a d'abord été obtenu en local sur Docker Compose le 2026-11-23, avec F02, F03 et F04 corrigées. L'alerte CSRF restante correspond à O1, ouverte et suivie (voir [§9.9](#99-faiblesses-non-planifiées-o1-à-o3)). La politique permet une exception de 30 jours au plus pour une alerte `Medium`, qui n'est pas bloquante.
+Le rapport du dernier scan est conservé : [HTML](../evidence/zap-2026-11-24-final-o1-o3.html), [JSON](../evidence/zap-2026-11-24-final-o1-o3.json). Il ne contient que des noms de cookies, aucune valeur.
+
+Le résultat a d'abord été obtenu en local sur Docker Compose le 2026-11-23, avec F02, F03 et F04 corrigées. L'alerte CSRF restante correspondait à O1 ; elle a disparu avec sa correction (voir [§9.9](#99-faiblesses-non-planifiées-o1-à-o3)). La politique permet une exception de 30 jours au plus pour une alerte `Medium`, qui n'est pas bloquante.
 
 ### 8.5 Ce que le DAST ne couvre pas
 
@@ -760,13 +771,34 @@ Toutes les corrections datent du 2026-11-23. Les vérifications détaillées son
 
 ### 9.9 Faiblesses non planifiées O1 à O3
 
-O4 et O5 sont corrigées avec F07. O1, O2 et O3 sont ouvertes au moment de ce brouillon ; leur correction est en cours.
+O4 et O5 sont corrigées avec F07. O1, O2 et O3 sont corrigées sur la branche `fix/o1-o3` (PR #13, run 45449364945 : les sept contrôles réussis). Le détail est dans le [registre](../vulnerability-register.md#fixes-for-o1-to-o3-2026-11-24-branch-fixo1-o3).
 
-> **[À compléter]** O1, jetons CSRF (travail en cours) : mécanisme retenu, routes couvertes, branche et pull request, vérification (alerte ZAP 10202 disparue, tests ajoutés), mise à jour du registre.
+**O1, jetons CSRF.** Nous avons choisi un jeton « double soumission signé » ([csrf.py](../../backend/app/csrf.py)) :
 
-> **[À compléter]** O2, limitation des tentatives de connexion (travail en cours) : seuils (par nom d'utilisateur et par adresse), réponse HTTP 429, journalisation, test « la sixième tentative rapide est refusée » prévu par le [playbook P3](../incident-response-plan.md#p3-brute-force-or-credential-stuffing), pull request, vérification.
+- **Le cookie.** Chaque visiteur reçoit un cookie aléatoire `docvault_csrf` (HttpOnly, `SameSite=Strict`).
+- **Le champ caché.** Les huit formulaires POST, y compris la connexion et la déconnexion, portent un champ `csrf_token` qui contient un HMAC de ce cookie, calculé avec la clé de signature.
+- **Pourquoi c'est sûr.** Un autre site peut faire envoyer le cookie par le navigateur de la victime, mais il ne peut ni le lire ni calculer le champ correspondant.
+- **En cas d'échec.** Une soumission sans jeton valide reçoit HTTP 403, et l'application écrit l'événement `csrf_rejected`.
+- **Avec ZAP.** ZAP reconnaît le nom `csrf_token` et va chercher une valeur fraîche, pour sa connexion comme pour son scan.
+- **Vérification.** L'alerte ZAP « Absence of Anti-CSRF Tokens » (10202) a disparu.
 
-> **[À compléter]** O3, limite de taille des téléversements (travail en cours) : limite retenue, quota éventuel par utilisateur, comportement au-delà, pull request, vérification.
+**O2, limitation des connexions.** Après 5 échecs de connexion pour un même nom d'utilisateur en 5 minutes, ce nom est verrouillé pendant 5 minutes ([login_throttle.py](../../backend/app/login_throttle.py)) :
+
+- **Pendant le verrouillage.** Toute tentative reçoit HTTP 429, sans que le mot de passe soit vérifié, même s'il est juste.
+- **Noms inconnus.** Ils sont comptés de la même façon, pour ne pas révéler quels comptes existent.
+- **Pourquoi par nom et pas par adresse.** Dans le cluster kind, tous les clients arrivent avec l'adresse du nœud : une limite par adresse bloquerait tout le monde à la fois.
+- **Compromis assumé.** N'importe qui peut verrouiller un compte connu pendant 5 minutes. L'alerte DV-A1 se déclenche alors en même temps.
+
+**Observation sous un vrai scan.** Le scan actif de ZAP attaque le formulaire de connexion avec le compte du scan, `alice`. Après 5 échecs, le compte a été verrouillé, et 213 tentatives suivantes ont été refusées (HTTP 429). ZAP a gardé la session ouverte avant le verrouillage : il a chargé 582 pages de documents authentifiées pendant le scan. La limite est réelle : si ZAP avait dû se reconnecter pendant le verrouillage, sa connexion aurait été refusée.
+
+**O3, limites de téléversement.**
+
+- **Par fichier.** 10 Mio. La limite est vérifiée deux fois : d'abord sur l'en-tête `Content-Length`, avant de lire le corps de la requête, puis pendant l'écriture du fichier.
+- **Par utilisateur.** Un quota de 100 Mio, compté grâce à une nouvelle colonne `documents.size_bytes` (migration `0002`). Les documents plus anciens comptent pour 0, car le conteneur d'initialisation qui exécute les migrations ne monte pas le volume des documents.
+- **En cas de refus.** Réponse HTTP 413, et aucun fichier n'est laissé sur le disque.
+- **Dans le pod.** Le `/tmp`, où les téléversements sont mis en mémoire tampon, est limité à 64 Mio.
+
+**Vérification.** 14 tests ajoutés ([test_weaknesses.py](../../backend/tests/test_weaknesses.py)). Sur un cluster kind neuf, la séquence CI complète a réussi : contrôles du déploiement, alertes DV-A et DV-R détectées, ZAP sans alerte High. Sur Docker Compose, `run_all.py` trouve 0 faille exploitable.
 
 ### 9.10 Matrice outils et failles
 
@@ -964,7 +996,7 @@ Ces délais sont dimensionnés pour des étudiants à temps partiel ; ce n'est p
 | --- | --- | --- | --- |
 | P1 Clé de signature fuitée ou forgée | DV-A2, Gitleaks, secret scanning GitHub, signalement | M2 | Sauvegarder les journaux, rotation immédiate de la clé (Compose ou kind), confirmer le refus de l'ancienne clé avec `run_all.py`, purge selon la procédure F05 |
 | P2 Conteneur compromis | DV-R1 à DV-R4 | M3 | Isoler le pod sans détruire les preuves (politique `quarantine`, retrait du label `app`, restriction du DNS), capturer journaux et état, supprimer le pod, faire tourner tous les secrets lisibles, reconstruire depuis une image propre, vérifier Kyverno et le réseau |
-| P3 Force brute | DV-A1 | M1 | Vérifier une connexion réussie après les échecs dans l'export du journal d'audit ; changement de mot de passe en base (procédure manuelle) ; correction prévue : O2 |
+| P3 Force brute | DV-A1 | M1 | Le verrouillage automatique (O2) bloque la devinette ; vérifier une connexion réussie après les échecs dans l'export du journal d'audit ; réinitialiser le mot de passe ou désactiver le compte depuis `/admin/users` |
 | P4 Sondage d'accès aux documents | DV-A3 | M1 | Requête SQL listant les téléchargements sans droit actuel ; couper l'accès si un accès a réussi ; correction par `get_readable_document` |
 | P5 Sondage de privilèges | DV-A4 | M1 | Vérifier changements de rôle et nouveaux comptes ; rétablir un rôle ; rotation de clé si une session admin est suspecte |
 | P6 Dépendance ou image vulnérable | Trivy, nouvel avis de vulnérabilité | M2 (dépendances), M3 (image) | Reproduire avec `scan.sh`, juger l'usage réel, mettre à jour la version ou l'empreinte, exception encadrée sinon |
@@ -974,34 +1006,59 @@ Le plan fournit aussi des conventions de commandes (kubectl épinglé avec conte
 
 ### 12.4 Écarts identifiés par le plan
 
-La rédaction du plan a mis en évidence des manques dans l'application et le dépôt ([§10 du plan](../incident-response-plan.md#10-known-limits)). Leur traitement est en cours.
+La rédaction du plan a mis en évidence des manques dans l'application et le dépôt ([§10 du plan](../incident-response-plan.md#10-known-limits)). Nous les avons traités le 2026-11-24 (PR #14 et #15).
 
-| Écart | Conséquence pour la réponse | Statut |
+| Écart | Conséquence pour la réponse | Traitement |
 | --- | --- | --- |
-| Pas de réinitialisation de mot de passe ni de désactivation de compte par l'administrateur | P3 et P4 dépendent d'une modification manuelle en base | En cours |
-| Pas de révocation de session par utilisateur | Seule la rotation de la clé termine une session volée, et elle déconnecte tout le monde | En cours |
-| Journal d'audit sans adresse du client ni identifiant de requête | Corrélation difficile entre l'audit, les alertes et les journaux d'accès ; menace T08 incomplètement traitée | En cours |
-| Dependabot désactivé | Voir [§6.7](#67-alertes-de-dépendances-dependabot) | En cours |
-| Branche `secure` non protégée | Voir [§2.3](#23-flux-git-et-protection-des-branches) | En cours |
+| Pas de réinitialisation de mot de passe ni de désactivation de compte par l'administrateur | P3 et P4 dépendaient d'une modification manuelle en base | Actions sur `/admin/users` ; changement de son propre mot de passe sur `/account` (PR #14) |
+| Pas de révocation de session par utilisateur | Seule la rotation de la clé terminait une session volée, et elle déconnecte tout le monde | « Sign out everywhere » par utilisateur, grâce à une version de session (PR #14) |
+| Journal d'audit sans adresse du client ni identifiant de requête | Corrélation difficile entre l'audit, les alertes et les journaux d'accès ; menace T08 incomplètement traitée | Adresse et identifiant de requête dans l'audit et les événements, export CSV (PR #14) |
+| Dependabot désactivé | Une nouvelle vulnérabilité n'était vue qu'au prochain push | Activé, avec configuration (PR #15, voir [§6.7](#67-alertes-de-dépendances-dependabot)) |
+| Branche `secure` non protégée | Une correction en échec pouvait y être fusionnée | Protégée comme `main` (voir [§2.3](#23-flux-git-et-protection-des-branches)) |
 
-> **[À compléter]** Réinitialisation de mot de passe et désactivation de compte par l'administrateur (travail en cours) : routes ajoutées, contrôle de rôle, entrées du journal d'audit, tests, pull request ; puis mise à jour des playbooks P3 et P4.
+**Réinitialisation et désactivation.** Sur `/admin/users`, réservé au rôle admin, un administrateur peut :
 
-> **[À compléter]** Révocation de session par utilisateur (travail en cours) : mécanisme retenu (par exemple version de session stockée en base), effet sur les cookies existants, tests, pull request ; puis mise à jour du playbook P1.
+- **réinitialiser un mot de passe** : cela déconnecte aussi l'utilisateur partout et lève un éventuel verrouillage de connexion ;
+- **désactiver ou réactiver un compte**, sauf le sien : un compte désactivé ne peut plus se connecter, ses sessions cessent immédiatement, et le formulaire répond comme pour un mauvais mot de passe, pour ne pas révéler l'état du compte.
 
-> **[À compléter]** Adresse du client et identifiant de requête dans le journal d'audit (travail en cours) : champs ajoutés, origine de l'adresse derrière le node port, propagation de l'identifiant dans les événements de sécurité, tests, pull request.
+Chaque action est inscrite au journal d'audit (`reset_password`, `disable_account`, `enable_account`, `login_disabled`). Chaque utilisateur peut changer son propre mot de passe sur `/account`, avec son mot de passe actuel ; ses autres sessions sont alors déconnectées. Les nouveaux mots de passe font au moins 12 caractères.
+
+**Révocation de session par utilisateur.** Chaque compte a une version de session (colonne `users.session_version`, migration `0003`), écrite dans le cookie signé.
+
+- **Ce qui l'augmente :** « Sign out everywhere », une réinitialisation, un changement de mot de passe ou une désactivation.
+- **L'effet :** les cookies de cet utilisateur deviennent invalides, sans toucher aux autres utilisateurs.
+- **La trace :** l'utilisation d'un cookie révoqué est journalisée (`invalid_session`, motif `revoked`), mais ce n'est pas une alerte.
+- **La conséquence pour la réponse :** la rotation de la clé n'est plus nécessaire que si la clé elle-même a pu fuir.
+
+**Traçabilité.** Chaque requête reçoit un identifiant, renvoyé dans l'en-tête `X-Request-ID`. Cet identifiant est inscrit dans les événements de sécurité et dans le journal d'audit, qui enregistre aussi l'adresse du client et les aperçus de documents. Derrière le node port de kind, l'adresse vue par l'application peut être celle du nœud, ce qui limite son intérêt dans cet environnement. Les rôles admin et auditor peuvent exporter tout le journal en CSV ; les valeurs qu'un tableur exécuterait comme des formules sont neutralisées.
+
+**Vérification.** 15 tests ajoutés ([test_account_controls.py](../../backend/tests/test_account_controls.py)), soit 76 au total. Nous avons aussi testé la mise à niveau de la migration `0001` à `0003` sur PostgreSQL avec des données existantes : les documents sont conservés, et les comptes restent actifs, en version 0. Sur Docker Compose, la révocation, la désactivation, la réactivation et l'export ont été vérifiés. Les playbooks P1, P3 et P4 utilisent désormais ces contrôles.
 
 ### 12.5 Exercices
 
-Le plan prévoit deux exercices, chacun suivant un playbook pour de vrai, avec capture des preuves et revue. Au 2026-11-23, aucun n'a été réalisé.
+Le 2026-11-24, nous avons exécuté les playbooks P1 et P2 sur un cluster kind neuf, avec le code final. **Ces deux exercices ont été scriptés et exécutés par Claude Code (IA), pas par l'équipe** : leurs temps sont ceux d'un script, pas de personnes qui lisent une alerte. Ils prouvent que les détections se déclenchent et que les commandes des playbooks fonctionnent. Le compte rendu, avec les deux chronologies UTC, est dans [docs/evidence/drills/2026-11-24-p1-p2.md](../evidence/drills/2026-11-24-p1-p2.md). Les preuves (journaux, manifeste du pod, export d'audit, empreintes SHA-256) sont restées hors du dépôt, comme le plan l'exige.
 
 | Date | Scénario | Alerte déclenchée | Temps de détection | Temps de confinement | Ce qui n'a pas marché | Statut |
 | --- | --- | --- | --- | --- | --- | --- |
-| [À compléter] | P1 : session forgée (DV-A2), avec `run_all.py` et une clé aléatoire dans `DOCVAULT_LEAKED_KEY`, puis rotation de la clé | [À compléter] | [À compléter] | [À compléter] | [À compléter] | Prévu, non réalisé |
-| [À compléter] | P2 : conteneur compromis, avec `detection-demo.sh` | [À compléter] | [À compléter] | [À compléter] | [À compléter] | Prévu, non réalisé |
+| 2026-11-24 | P1 : cookie admin forgé, puis cookie d'`alice` volé (A), puis clé supposée exposée (B) | DV-A2 | 0,15 s | 2,4 s (A, un seul utilisateur déconnecté) ; 20 s (B, clé changée) | La première requête après le redémarrage a été coupée (voir ci-dessous) | Réalisé, exercice technique |
+| 2026-11-24 | P2 : shell, `id`, `cat /etc/shadow` dans le conteneur de l'application | DV-R1, DV-R2, DV-R3 | 0,2 s | 1,4 s (quarantaine) | Même coupure après le redémarrage ; `/healthz` a même répondu depuis l'ancien pod | Réalisé, exercice technique |
+| À planifier | P1 et P2 par l'équipe, de l'alerte à la revue, sans les scripts | | | | | Prévu |
 
-> **[À compléter]** Exercice P1 (session forgée) : date, responsable d'incident (rôle), chronologie UTC, temps de détection et de confinement mesurés, commandes qui ont échoué ou manqué, actions de la revue post-incident et lien vers sa trace (note d'avancement ou `docs/evidence/` caviardé).
+**Résultats.**
 
-> **[À compléter]** Exercice P2 (conteneur compromis) : mêmes éléments, plus le résultat des commandes marquées « non testées » dans le plan (quarantaine, capture dans le pod, `crictl`).
+- **P1, cookie volé (scénario A).** Le vol a été contenu en déconnectant le seul utilisateur concerné, sans toucher aux autres.
+- **P1, clé exposée (scénario B).** Après la rotation de la clé, l'ancienne clé et les cookies antérieurs ont été refusés (HTTP 303), et `run_all.py` n'a trouvé aucune faille exploitable.
+- **P2, isolement.** Le pod a été mis en quarantaine sans détruire les preuves : le pod de remplacement servait seul, et le pod isolé ne pouvait même plus résoudre le nom de la base de données.
+- **P2, durcissement.** Il a tenu sur le pod compromis : UID 10001, système de fichiers racine en lecture seule, pas de jeton.
+- **P2, éradication.** Le mot de passe de la base et la clé ont été changés, puis l'application a été vérifiée.
+
+**Ce que les exercices ont corrigé dans le plan.**
+
+1. **Après un redémarrage, `rollout status` rend la main trop tôt.** L'ancien pod est encore en cours d'arrêt, et les requêtes peuvent être coupées. Il faut attendre qu'il ne reste qu'un seul pod de l'application.
+2. **La rotation du mot de passe de la base, marquée « non testée », fonctionne sans le `\password` interactif.** La commande `ALTER ROLE` passe par l'entrée standard, donc la valeur n'apparaît jamais sur une ligne de commande.
+3. **Les outils doivent être prêts avant l'incident.** PyPI était inaccessible pendant l'exercice ; les scripts n'ont fonctionné que grâce au cache hors ligne de uv.
+
+Les deux playbooks ont été mis à jour en conséquence.
 
 ---
 
@@ -1051,7 +1108,7 @@ Un pipeline vert ne veut pas dire que DocVault est sûre. Ce chapitre rassemble 
 
 - Les alertes ne sont ni centralisées, ni conservées, ni transmises à quelqu'un : elles disparaissent avec le pod, et quelqu'un doit regarder. L'observabilité « Prometheus, Loki, Grafana » prévue sur la figure d'architecture n'a pas été réalisée.
 - Le journal d'audit est incomplet (pas d'adresse client, pas d'identifiant de corrélation, pas de trace des consultations, aperçus ni refus) et non infalsifiable : il est dans la base que le compte applicatif peut modifier. La page `/audit` ne montre que les 200 dernières entrées.
-- Le plan de réponse n'a pas encore été exercé, et plusieurs de ses commandes sont marquées « non testées ». Tant que les exercices n'ont pas eu lieu, le plan reste une hypothèse.
+- Le plan de réponse n'a été exercé que par deux exercices techniques scriptés par l'IA ([§12.5](#125-exercices)). Ils prouvent que les détections et les commandes fonctionnent, pas que l'équipe sait réagir sous pression : une répétition par l'équipe reste à faire. Deux commandes restent « non testées ».
 - Les délais de réponse sont des objectifs « au mieux » pour une équipe d'étudiants sans astreinte.
 
 ### 13.7 Méthode
@@ -1095,11 +1152,13 @@ Aucune production n'a été acceptée sur la seule foi de l'outil. Chaque entré
 
 ### 14.4 Ce qui reste à faire
 
-La dernière colonne du journal, « Validated by the student », est à « To complete » pour les 20 entrées.
+La dernière colonne du journal, « Validated by the student », est à « To complete » pour toutes les entrées.
 
 > **[À compléter]** Colonne « Validated by the student » de [ai-usage.md](../ai-usage.md) : pour chaque entrée, qui a relu (rôle ou nom), ce qui a été vérifié, et la date.
 
-> **[À compléter]** Déclarer dans [ai-usage.md](../ai-usage.md) les productions absentes du journal : la présentation (`DocVault-presentation.pptx`), le texte oral, la figure d'architecture, le point d'avancement du 18/11 (préciser si l'IA a été utilisée ou non), ainsi qu'une ligne pour ce rapport (2026-11-24) et pour les travaux en cours (O1 à O3, contrôles de compte, Dependabot, protection de `secure`, exercices).
+Le journal déclare désormais aussi les corrections d'O1 à O3, les contrôles de compte, Dependabot et la protection de `secure`, les exercices, la mise à jour de la figure et ce rapport.
+
+> **[À compléter]** Préciser dans [ai-usage.md](../ai-usage.md) si l'IA a été utilisée pour les productions du 18/11 : la présentation (`DocVault-presentation.pptx`), le texte oral, la première version de la figure d'architecture et le point d'avancement.
 
 ---
 
@@ -1115,15 +1174,14 @@ Nous avons construit une application volontairement vulnérable, puis l'avons s�
 - un DAST authentifié qui confirme trois failles sur la version vulnérable et aucune alerte `High` sur la version corrigée ;
 - une démonstration complète « révoquer puis purger » ;
 - une détection en deux couches, vérifiée à chaque run ;
-- un plan de réponse aux incidents, qui reste à exercer.
+- un plan de réponse aux incidents, exercé une première fois par deux exercices techniques qui ont amélioré deux playbooks ;
+- les trois faiblesses découvertes en chemin (O1 à O3) corrigées, et les contrôles de compte qui manquaient à la réponse aux incidents ajoutés.
 
 Le principal enseignement est que chaque couche voit des choses différentes. Les outils statiques ont trouvé 4 failles sur 7, ZAP deux autres, et seule une suite de tests écrite pour notre logique métier a couvert la septième. Ce qui compte n'est pas un pipeline vert, mais la capacité à dire précisément ce que chaque contrôle prouve et ce qu'il ne prouve pas.
 
-> **[À compléter]** Mettre à jour ce bilan et le [tableau de conformité](#tableau-de-conformité-aux-exigences) quand les travaux en cours seront terminés (O1 à O3, contrôles de compte, Dependabot, protection de `secure`, exercices P1 et P2).
-
 ### 15.2 Perspectives
 
-Au-delà des travaux en cours, les améliorations suivantes répondraient aux limites du [chapitre 13](#13-réflexion-critique-et-limites) :
+Au-delà de ce qui est fait, les améliorations suivantes répondraient aux limites du [chapitre 13](#13-réflexion-critique-et-limites) :
 
 - un registre d'images, des empreintes pour l'image applicative et une signature des images, ce qui permettrait de lever E1 et E2 ;
 - une collecte centrale des journaux et un routage des alertes (par exemple Falcosidekick vers un SIEM) ;
