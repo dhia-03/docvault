@@ -1,8 +1,9 @@
 """DocVault web application.
 
-This is the deliberately vulnerable baseline. Each planted flaw is marked with
-a "VULN" comment and described in docs/vulnerability-register.md. Run it only
-on localhost or in a dedicated test environment.
+The planted flaws of the course project are fixed; each fix is marked with an
+"F0x fix" comment and described in docs/vulnerability-register.md. The
+deliberately vulnerable version is the tag v0-vulnerable: run that one only on
+localhost or in a dedicated test environment.
 """
 
 import csv

@@ -2,7 +2,7 @@
 
 This plan says what the team does when DocVault may be under attack or a secret may be exposed: who leads, how fast, which commands to run, and how to prove the problem is fixed. It covers the project period and the demo. It is written for a four-person student team with no on-call rota, so the response targets are best effort during working hours.
 
-Status on 2026-11-23: draft, not yet exercised. No drill has been run (see [Drills](#9-drills)). The application alerts (DV-A1 to DV-A4) and the Falco rules (DV-R1 to DV-R4) are being built in parallel and are not in `main` yet. Commands marked *(untested)* have not been run against a live environment; the first drills must confirm them.
+Status on 2026-11-24: P1 and P2 were run once each as technical drills (scripted by Claude Code, not by the team; see [Drills](#9-drills)); a team rehearsal is still to be done. The application alerts (DV-A1 to DV-A4) and the Falco rules (DV-R1 to DV-R4) are in `main` and proven on every CI run. Commands marked *(untested)* have not been run against a live environment; the first drills must confirm them.
 
 The phases follow the classic cycle from NIST SP 800-61. The assets (AS1 to AS6) and threats (T01 to T18) are those of the [threat model](threat-model.md). Fixed flaws (F01 to F07) and open weaknesses (O1 to O3) are in the [vulnerability register](vulnerability-register.md).
 
@@ -93,16 +93,18 @@ These targets are sized for students working part-time and are not a service com
 
 ### Default severity per alert
 
-| Source | ID | Alert severity | Default level | Raise when |
+The third column is the severity written in the alert itself (Falco's own priority scale for DV-R). The incident level is the team's decision and can be higher: a Falco "Warning" for a shell in a container is still a SEV1 until a team member explains it.
+
+| Source | ID | Severity in the alert | Default level | Raise when |
 | --- | --- | --- | --- | --- |
 | App | DV-A1 `brute_force_suspected` | Medium | SEV3 | SEV2 if a `login` for the targeted account follows the failures; SEV1 if that account then did something its owner denies |
 | App | DV-A2 `forged_session` | High | SEV2 | SEV1 if the current signing key may be exposed, or the audit log shows actions nobody on the team made |
 | App | DV-A3 `access_probing` | Medium | SEV2 | SEV1 if the account obtained a document it had no right to |
 | App | DV-A4 `privilege_probe` | Low | SEV3 | SEV2 if it comes with DV-A3 or an unexpected role change; SEV1 if a non-admin got an admin page |
-| Falco | DV-R1 shell in a DocVault container | High | SEV1 | Not an incident if a team member's `kubectl exec` explains it |
-| Falco | DV-R2 unexpected program in the app container | High | SEV1 | Same |
-| Falco | DV-R3 sensitive file read | High | SEV1 | Same |
-| Falco | DV-R4 unexpected outbound connection *(may not exist)* | Medium | SEV2 | SEV1 if the connection succeeded, because the network policy then failed |
+| Falco | DV-R1 shell in a DocVault container | Warning | SEV1 | Not an incident if a team member's `kubectl exec` explains it |
+| Falco | DV-R2 unexpected program in the app container | Warning | SEV1 | Same |
+| Falco | DV-R3 sensitive file read | Critical | SEV1 | Same |
+| Falco | DV-R4 unexpected outbound connection | Warning | SEV2 | SEV1 if the connection succeeded, because the network policy then failed |
 | CI | Gitleaks finds a real secret | n/a | SEV1 | A confirmed false positive is not an incident: record an exception by fingerprint |
 | GitHub | Secret scanning alert or push protection block | n/a | SEV1 if the value is real | Enabled on 2026-11-23 |
 | CI | Trivy `HIGH` or `CRITICAL` with a fix, on `main` | n/a | SEV2 (`CRITICAL`), SEV3 (`HIGH`) | SEV1 if it is exploitable in DocVault, like F06 was |
@@ -231,10 +233,13 @@ kc -n docvault create secret generic docvault-secrets --from-file="$d" --dry-run
 rm -rf "$d"
 kc -n docvault rollout restart deployment/docvault
 kc -n docvault rollout status deployment/docvault --timeout=300s
+# rollout status returns while the old pod is still terminating, and requests
+# can still reach it and be reset (seen in both drills): wait for one pod.
+until [ "$(kc -n docvault get pods -l app=docvault --no-headers | wc -l)" = 1 ]; do sleep 1; done
 note "SECRET_KEY rotated"
 ```
 
-**Consequence:** every user is signed out, because every cookie was signed with the old key. Sessions are stateless signed cookies with no server-side list, so rotating the key is the only way to end a stolen or forged session. Expect DV-A2 from old cookies for up to 8 hours (the cookie lifetime). Record the rotation time, so those alerts can be told apart.
+**Consequence:** every user is signed out, because every cookie was signed with the old key. For one stolen session, "Sign out everywhere" for that user is enough (P1 drill, scenario A); rotating the key is needed when the key itself may be known. Expect DV-A2 from old cookies for up to 8 hours (the cookie lifetime). Record the rotation time, so those alerts can be told apart.
 
 **Confirm the old key no longer works**
 
@@ -348,7 +353,7 @@ docker exec docvault-control-plane crictl ps -a > "$IR/node-containers.txt"   # 
 # audit log export: see "Command conventions"
 ```
 
-These copy files out of the pod. They run programs in the container, so Falco will raise DV-R1 or DV-R2 for them: note the time before running them *(untested)*.
+These copy files out of the pod. They run programs in the container, so Falco will raise DV-R1 or DV-R2 for them: note the time before running them (tested in the P2 drill).
 
 ```bash
 note "evidence capture inside the pod starts (expect DV-R1/DV-R2)"
@@ -376,11 +381,12 @@ Compose has no quarantine, but a stopped container keeps its filesystem: `docker
 - Find and fix the entry point before restoring the service: `run_all.py`, `scripts/ci/dast.sh` and `bash scripts/ci/scan.sh all` help to rule known classes in or out. A new flaw gets a register entry, a fix and a regression test in `backend/tests`, through a pull request.
 - Rotate every secret the pod could read:
   - **Signing key:** as in P1.
-  - **Database password.** `POSTGRES_PASSWORD` is only read when the database is first created, so changing the secret alone does nothing. Change it in the database first, then in `.env`, then redeploy *(untested)*:
+  - **Database password.** `POSTGRES_PASSWORD` is only read when the database is first created, so changing the secret alone does nothing. Change it in the database first, then in `.env`, then redeploy (tested in the P2 drill). The new value goes through standard input, never a command line:
     ```bash
-    kc -n docvault exec -it statefulset/db -c postgres -- psql -U docvault -d docvault -c '\password docvault'
-    # Put the same new value in POSTGRES_PASSWORD in .env, then:
+    # Put the new value in POSTGRES_PASSWORD in .env first, then:
     set -a; . ./.env; set +a
+    printf "ALTER ROLE docvault WITH PASSWORD '%s';\n" "$POSTGRES_PASSWORD" \
+      | kc -n docvault exec -i statefulset/db -c postgres -- psql -q -U docvault -d docvault
     scripts/ci/deploy.sh up
     ```
     In Compose: `docker compose exec db psql -U docvault -d docvault -c '\password docvault'`, update `.env`, then `docker compose up -d`.
@@ -404,7 +410,7 @@ The `quarantine` policy can stay: it selects no pod once the quarantined one is 
 - `scripts/ci/deploy.sh up` ends with its own checks: Kyverno must refuse a pod with no security context, the database must not answer a pod from another namespace, and `alice` must sign in.
 - `kc get clusterpolicy`: all four policies `Ready`. `kc -n docvault get networkpolicy`: `default-deny`, `allow-dns`, `app`, `db` (and `quarantine`).
 - In `$IR/pod.yaml`: `runAsUser: 10001`, `readOnlyRootFilesystem: true`, `automountServiceAccountToken: false`. If any is missing, Kyverno failed and that becomes its own finding.
-- Egress from the new app pod is blocked; this should time out, and Falco should raise DV-R2 (and DV-R4 if it exists) *(untested)*:
+- Egress from the new app pod is blocked; this should time out, and Falco should raise DV-R2 and DV-R4 *(untested; the Falco demo checks DV-R4 with another address)*:
   `kc -n docvault exec deploy/docvault -c app -- python -c "import socket; socket.create_connection(('1.1.1.1', 443), timeout=5)"`
 - `run_all.py` against `http://127.0.0.1:18000`: 0 tested flaws exploitable. It reports F07 as "not tested" since F06 is fixed, so check the user directly: `kc -n docvault exec deploy/docvault -c app -- id -u` must print 10001 (this raises DV-R2, as expected).
 
@@ -751,12 +757,13 @@ Action items feed the [vulnerability register](vulnerability-register.md): a new
 
 ## 9. Drills
 
-Each drill follows the relevant playbook for real, with real evidence capture, and ends with a review. Nothing below has been run yet.
+Each drill follows the relevant playbook for real, with real evidence capture, and ends with a review. The record of the first two, with their timelines and findings, is in [`docs/evidence/drills/2026-11-24-p1-p2.md`](evidence/drills/2026-11-24-p1-p2.md). They were scripted and run by Claude Code, so their times are a script's, not a team's.
 
 | Date | Scenario | Alert that fired | Time to detect | Time to contain | What went wrong | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| To be scheduled | P2 drill using the detection demo (`scripts/security/detection-demo.sh`, being built) | | | | | Planned, not done |
-| To be scheduled | P1 drill: DV-A2 forged session (`run_all.py` with a random `DOCVAULT_LEAKED_KEY`, then a key rotation) | | | | | Planned, not done |
+| 2026-11-24 | P1: forged admin cookie, then a stolen cookie (A), then the key treated as exposed (B) | DV-A2 | 0.15 s | 2.4 s (A, one user signed out); 20 s (B, key rotated) | The first request after the restart was reset: `rollout status` returned while the old pod was terminating. Playbook updated | Done, technical run-through |
+| 2026-11-24 | P2: shell, `id`, `cat /etc/shadow` in the app container | DV-R1, DV-R2, DV-R3 | 0.2 s | 1.4 s (quarantine) | Same reset after the restart; `/healthz` even answered from the old pod. DB password rotation done without `\password`. Playbook updated | Done, technical run-through |
+| To be scheduled | P1 and P2 again, by the team, from the alert to the review, without the scripts | | | | | Planned |
 
 ## 10. Known limits
 
@@ -774,4 +781,4 @@ Each drill follows the relevant playbook for real, with real evidence capture, a
 - **GitHub keeps copies after a purge.** Pull request references and cached views keep old commits until GitHub Support removes them. Anyone who cloned while the repository was public keeps the history. This is why every leaked secret is rotated first.
 - **Dependabot alerts are off.** New advisories reach us only when Trivy runs. `--ignore-unfixed` hides critical issues with no fix, and the PostgreSQL image is not scanned.
 - **One repository admin.** Only the owner account can change settings, disable Actions or lift branch protection. Pull requests need 0 approvals, so one member can merge alone once the checks pass.
-- **Several commands are untested,** as marked. The drills are where they get confirmed or corrected.
+- **A few commands are still untested,** as marked (the node container listing and the egress check from a new pod). The P1 and P2 drills confirmed the others, including the quarantine, the evidence capture and the secret rotations.

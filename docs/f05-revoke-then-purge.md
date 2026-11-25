@@ -1,6 +1,6 @@
 # F05: revoke, then purge
 
-The signing key for session cookies was committed in `backend/app/config.py` (commit `3e82f9a`, tag `v0-vulnerable`). The repository has been public since 2026-11-22, so the key must be treated as known to anyone. This page is the procedure, and the record of when each step was done.
+The signing key for session cookies was committed in `backend/app/config.py` (commit `3e82f9a`, tag `v0-vulnerable`; the purge rewrote that commit as `cd2ba33`). The repository has been public since 2026-11-22, so the key must be treated as known to anyone. This page is the procedure, and the record of when each step was done.
 
 The order matters. Purging Git history does not remove copies that people already cloned, forked or cached. Only revoking the key makes those copies useless, so it comes first.
 

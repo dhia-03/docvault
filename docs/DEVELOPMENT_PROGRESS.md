@@ -4,6 +4,8 @@ Last updated: 2026-11-23
 
 ## Current status
 
+Dates are local time (UTC+1) unless marked UTC; GitHub shows CI run times in UTC, so a run can appear one day earlier there.
+
 All seven planted flaws were documented, exploited, then fixed and re-tested. The fixes are merged into `secure`, and the leaked key was revoked, then purged from history. Seven checks run in CI (the five required by the course, ZAP and the tests), and `main` only accepts merges that pass all of them. The vulnerable baseline stays available as tag `v0-vulnerable`. The theme is pending validation by the professor.
 
 | Step | Status |
@@ -16,7 +18,7 @@ All seven planted flaws were documented, exploited, then fixed and re-tested. Th
 | 6. Authenticated ZAP in the pipeline | Done: F02, F03 and F04 confirmed on the baseline |
 | 7. Fix each flaw and re-test | Done: all seven fixed and re-tested, merged into `secure` |
 | 8. Revoke-then-purge demonstration | Done: revoked, verified, purged and verified (`docs/f05-revoke-then-purge.md`) |
-| 9. Runtime detection and incident response plan | Built on `feat/app-detection`, not merged yet; plan written, drills planned |
+| 9. Runtime detection and incident response plan | Done (merged into `main` through #11 and #12); P1 and P2 drills run as technical run-throughs on 2026-11-24, team rehearsal planned |
 | 10. Report, slides, contribution sheet and AI declaration | AI log started |
 
 ## Completed
@@ -26,11 +28,12 @@ All seven planted flaws were documented, exploited, then fixed and re-tested. Th
 - Vulnerable application with login, three roles, upload, search, sharing, admin pages and an audit log
 - Vulnerability register for F01 to F07
 - Runtime detection: application alerts DV-A1 to DV-A4 and Falco rules DV-R1 to DV-R4, each proven by a demo in the `DAST (ZAP)` job ([runtime-detection.md](runtime-detection.md))
+- Dependabot (alerts, security updates and weekly version updates with a 14-day cooldown) and protection of `secure` with the same seven required checks as `main` (2026-11-24)
 - Account controls for incident response: admin password reset, disable and enable, sign one user out everywhere (session version in the cookie), own password change; audit log with client address and request ID, CSV export (on `feat/account-controls`, not merged yet)
 - Incident response plan with seven playbooks ([incident-response-plan.md](incident-response-plan.md)); no drill run yet
 - Repository made public on 2026-11-22, so that `main` can require the checks (branch protection is not available on private repositories in the free plan)
 - `main` protection: pull request required, all seven checks (five static, ZAP and the tests) must pass, applies to admins
-- `vulnerable-baseline` pushed and tagged `v0-vulnerable`; draft pull request #2 kept open as CI evidence, never to be merged
+- `vulnerable-baseline` pushed and tagged `v0-vulnerable`; draft pull request #2 kept as CI evidence and never merged by hand. GitHub now shows it as "Merged" (2026-11-23 02:19 UTC): `secure` was built on top of `vulnerable-baseline`, so when `secure` was merged into `main` (#10), the baseline commit became part of `main`'s history and GitHub closed #2 automatically. Its failing checks and screenshots remain valid evidence of the blocking pipeline
 - Image scan (Trivy) and deployment-file scan (Checkov) added to CI
 - Baseline Kubernetes manifests in `deploy/k8s/`, including the Kubernetes half of F07
 - Deploy stage in CI: `scripts/ci/deploy.sh` deploys to a throwaway kind cluster on the runner and signs in as a test user
@@ -61,7 +64,7 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 | `run_all.py` on the hardened deploy and on Compose, 2026-11-23 | 6 of 7 exploitable; F07 not exploitable (UID 10001); F04 can no longer write outside storage |
 | F06 fix on Compose and on kind (with F07), 2026-11-23 | F06 not exploitable; dependency scan and image scan pass with 0 findings |
 | F05 revocation on Compose and kind, 2026-11-23 | Session forged with the leaked key refused (HTTP 303); Gitleaks clean on the working tree, history still holds the key |
-| Purge dry run, 2026-11-23 | Rewritten history has no leak; 4 branches and 1 tag would change; `main` unchanged |
+| Purge dry run, 2026-11-23 | Rewritten history has no leak; 4 branches and 1 tag would change at that time; `main` unchanged (the real purge, after more fix branches existed, rewrote 9 branches and the tag) |
 | F02 fix on Compose, 2026-11-23 | Not exploitable; search behaviour checked; Semgrep 0 findings |
 | F04 fix on Compose, 2026-11-23 | Not exploitable; no file written outside storage; preview, download and access check work |
 | F03 fix on Compose, 2026-11-23 | Not exploitable; CSP and other headers present; cookie `HttpOnly` |
@@ -72,12 +75,12 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 | Step 9 end to end on a fresh kind cluster, 2026-11-23 | Deploy checks passed with Falco quiet; app demo: DV-A1 to DV-A4 detected; ZAP passed; Falco demo: DV-R1 to DV-R4 detected (7 of 7 checks) |
 | O1 to O3 on a fresh kind cluster, 2026-11-24 | Deploy checks passed, Falco quiet; DV-A1 to DV-A4 and DV-R1 to DV-R4 detected; ZAP passed. ZAP's fuzzing of the login form locked `alice` (209 failures, then 213 attempts refused with 429), while ZAP kept its session (582 authenticated page loads) |
 | Account controls, 2026-11-24 | 76 tests passed; upgrade from migration 0001 to 0003 on PostgreSQL with existing data; on Compose: revoke, disable, enable, CSV export with address and request ID checked; `run_all.py` 0 tested flaws exploitable; DV-A1 to DV-A4 detected |
+| Drills P1 and P2 on kind, 2026-11-24 | Scripted run-throughs: alert within 0.2 s, containment within 2.4 s, recovery verified (0 tested flaws exploitable); two findings fed back into the playbooks ([record](evidence/drills/2026-11-24-p1-p2.md)) |
 | CI run 45083855384, 2026-11-23 | ZAP blocked with the same 4 High alerts, plus one false positive on `/documents/1/share`; report in `docs/evidence/` |
 | CI run 45071375296 on pull request #2, 2026-11-22 | All five checks failed with the same results as locally; log in `docs/evidence/` |
 
 ## Known limitations
 
-- The image scan and Checkov have run locally but not yet on GitHub.
 - The deploy stage uses kind, not Minikube. The same script runs locally, so Minikube is no longer needed.
 - The deploy stage does not wait for the static checks, so the vulnerable baseline can be scanned by ZAP. Merging still needs every check.
 - ZAP scans as one user, so it cannot find F01 (access between users), and it missed the stored XSS.
@@ -96,7 +99,6 @@ The seven planted flaws and the five unplanned weaknesses (O1 to O5) are fixed; 
 
 ## Next steps
 
-1. Merge the step 9 pull request into `secure`, then `secure` into `main`.
-2. Run the two planned drills (P2 with the Falco demo, P1 with a forged session) and record them in the plan.
-3. Turn on Dependabot and protect `secure` (the last gaps the incident response plan found).
-5. Step 10: report, slides, Annexe B sheets and the AI declaration.
+1. Merge #13 (O1 to O3), #14 (account controls) and the repository hygiene pull request into `secure`, then `secure` into `main`.
+2. Rehearse P1 and P2 as a team, without the scripts, and record the times.
+3. Step 10: review and complete the French report (`docs/rapport/`), then the slides, the Annexe B sheets and the AI declaration.
