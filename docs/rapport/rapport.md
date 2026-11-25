@@ -2,7 +2,7 @@
 
 **Rapport final du projet DevSecOps**
 
-> **État du brouillon (2026-11-24).** Tous les chapitres sont rédigés à partir des documents et des résultats du dépôt, y compris les travaux du 2026-11-24 (O1 à O3, contrôles de compte, Dependabot, protection de `secure`, exercices). Ne restent, aux endroits marqués **[À compléter]**, que les informations que seule l'équipe peut fournir : la date de remise, l'attribution des rôles M1 à M4 (§2.1), l'Annexe A (§2.2), les dates de fusion des PR #13 à #15 et de celle de ce rapport (§2.4), les fiches Annexe B (§2.5, [modèle](annexe-b-modele.md)), les captures (§6.5, Annexe C), la décision sur le support GitHub (§10.4) et la validation de l'usage de l'IA (§14.4). Ce bloc est à retirer avant la remise.
+> **État du brouillon (2026-11-24).** Tous les chapitres sont rédigés à partir des documents et des résultats du dépôt, y compris les travaux du 2026-11-24 (O1 à O3, contrôles de compte, Dependabot, protection de `secure`, exercices). Ne restent, aux endroits marqués **[À compléter]**, que les informations que seule l'équipe peut fournir : la date de remise, l'attribution des rôles M1 à M4 (§2.1), l'Annexe A (§2.2), les fiches Annexe B (§2.5, [modèle](annexe-b-modele.md)), les captures (§6.5, Annexe C), la décision sur le support GitHub (§10.4) et la validation de l'usage de l'IA (§14.4). Ce bloc est à retirer avant la remise.
 
 | | |
 | --- | --- |
@@ -169,7 +169,7 @@ flowchart LR
 | `feat/app-detection` | Détection à l'exécution et plan de réponse (étape 9) |
 | `fix/o1-o3`, `feat/account-controls`, `chore/hygiene` | Faiblesses O1 à O3, contrôles de compte pour la réponse aux incidents, Dependabot, cohérence des documents et exercices (PR #13 à #15, empilées : chacune part de la précédente) |
 | `secure` | Intégration des corrections, puis fusion dans `main` par pull request |
-| `main` | Branche protégée : n'accepte que des pull requests qui passent les sept contrôles |
+| `main` | Branche protégée : n'accepte que des pull requests qui passent les sept contrôles. Version finale taguée `v1-secure` |
 
 **Protection de `main`.** Le dépôt est public depuis le 2026-11-22, car la protection de branche n'est pas disponible sur un dépôt privé avec l'offre gratuite de GitHub. Nous avons relu la configuration le 2026-11-24 avec l'API GitHub (lecture seule) :
 
@@ -204,11 +204,13 @@ Horaires en UTC, d'après `gh pr list` et `gh run list`.
 | #10 | `secure` → `main` | Les sept failles corrigées, clé purgée | 2026-11-23 02:19 | 45098724265 (succès, 7 sur 7) ; push sur `main` : 45099516909 (succès) |
 | #11 | `feat/app-detection` → `secure` | Étape 9 : détection et plan de réponse | 2026-11-23 03:24 | 45104983793 (succès) |
 | #12 | `secure` → `main` | Étape 9 | 2026-11-23 03:32 | 45105825605 (succès) ; push sur `main` : 45106603478 (succès, 7 sur 7) |
-| #13 | `fix/o1-o3` → `secure` | O1 à O3 : jetons CSRF, verrouillage de connexion, limites de téléversement | En attente | 45449364945 (succès, 7 sur 7) |
-| #14 | `feat/account-controls` → `fix/o1-o3` | Contrôles de compte, identifiant de requête, journal d'audit enrichi | En attente | À relever |
-| #15 | `chore/hygiene` → `feat/account-controls` | Dependabot, protection de `secure`, cohérence des documents, exercices P1 et P2 | En attente | À relever |
+| #13 | `fix/o1-o3` → `secure` | O1 à O3 : jetons CSRF, verrouillage de connexion, limites de téléversement | 2026-11-25 03:18 | 45449364945 (succès, 7 sur 7) |
+| #14 | `feat/account-controls` → `secure` | Contrôles de compte, identifiant de requête, journal d'audit enrichi | 2026-11-25 03:23 | 45539111155 (succès, 7 sur 7) |
+| #15 | `chore/hygiene` → `secure` | Dependabot, protection de `secure`, cohérence des documents, exercices P1 et P2 | 2026-11-25 03:30 | 45539741333 (succès, 7 sur 7) |
+| #16 | `dependabot/pip/...` → `secure` | Mise à jour de sécurité proposée par Dependabot : `opentelemetry-api` 1.45.2 | 2026-11-25 03:42 | 45541316466 (succès) |
+| #17 | `docs/rapport-final` → `secure` | Rapport final, présentation de soutenance, texte oral | 2026-11-25 03:37 | 45540542419 (succès, 7 sur 7) |
 
-> **[À compléter]** Après la fusion des PR #13 à #15 (et de la pull request de ce rapport), mettre à jour leurs dates de fusion et leurs runs CI.
+`secure` étant protégée depuis le 2026-11-24, chacune des PR #13 à #17 a dû être mise à jour avec `secure` et repasser les sept contrôles avant sa fusion. La mise à jour finale de la documentation et la fusion de `secure` dans `main` suivent dans deux dernières pull requests. La version finale de `main` est taguée `v1-secure`.
 
 **Note sur la PR #2.** La PR #2 n'a jamais été fusionnée à la main : elle est restée en brouillon, et un brouillon ne peut pas être fusionné. GitHub l'affiche pourtant « Merged » depuis le 2026-11-23 à 02:19:12, une seconde après la fusion de la PR #10. La branche `secure` part de `vulnerable-baseline`, donc le dernier commit de la PR #2 (`65c59a1`) est devenu un ancêtre de `main` à ce moment, et GitHub a marqué la PR comme fusionnée. Les échecs CI de la PR #2 restent consultables, et leurs journaux sont sauvegardés dans [docs/evidence/](../evidence/).
 
@@ -521,6 +523,8 @@ La conséquence est que « rien n'est déployé en cas d'échec », formule de n
 Jusqu'au 2026-11-24, les alertes Dependabot étaient désactivées et la CI n'a pas d'exécution planifiée : une nouvelle vulnérabilité n'était donc détectée qu'au prochain push ou à la prochaine pull request ([plan de réponse, P6](../incident-response-plan.md#p6-vulnerable-dependency-or-image-disclosed)). La détection de secrets de GitHub (secret scanning) a été activée le 2026-11-23.
 
 Le 2026-11-24, nous avons activé les alertes Dependabot et les mises à jour de sécurité automatiques (réglages du dépôt, par l'API GitHub, relus ensuite : `dependabot_security_updates: enabled`). Nous avons aussi ajouté [`.github/dependabot.yml`](../../.github/dependabot.yml) : des mises à jour hebdomadaires pour les paquets Python (`pip`, dossier `backend/`), les actions GitHub et l'image de base Docker. Ces pull requests passent les mêmes sept contrôles requis que les autres.
+
+**Premier résultat, le jour même.** Dès son activation, Dependabot a signalé une vulnérabilité modérée dans `opentelemetry-api` 1.45.1, une dépendance de FastAPI : un déni de service par l'analyse en temps quadratique de l'en-tête `traceparent` (GHSA-mf5v-w3w3-f6cg). Il a ouvert la PR #16 vers la version 1.45.2, qui a passé tous les contrôles et a été fusionnée le 2026-11-25. Trivy ne l'avait pas bloquée, car son seuil ne retient que `HIGH` et `CRITICAL` : la vulnérabilité, `Medium`, a été suivie puis corrigée en un jour, comme le prévoit le [playbook P6](../incident-response-plan.md#p6-vulnerable-dependency-or-image-disclosed). Elle est consignée sous l'identifiant D1 dans le [registre](../vulnerability-register.md#vulnerabilities-found-after-the-fixes).
 
 Le fichier impose un délai de 14 jours (`cooldown`) avant de proposer une nouvelle version. C'est la même règle que celle que nous avons suivie pour épingler chaque outil : n'adopter une version qu'après deux semaines de publication, pour laisser le temps de repérer une version défectueuse ou malveillante. Les mises à jour de sécurité ne sont pas retardées.
 

@@ -6,7 +6,7 @@ Last updated: 2026-11-23
 
 Dates are local time (UTC+1) unless marked UTC; GitHub shows CI run times in UTC, so a run can appear one day earlier there.
 
-All seven planted flaws were documented, exploited, then fixed and re-tested. The fixes are merged into `secure`, and the leaked key was revoked, then purged from history. Seven checks run in CI (the five required by the course, ZAP and the tests), and `main` only accepts merges that pass all of them. The vulnerable baseline stays available as tag `v0-vulnerable`. The theme is pending validation by the professor.
+The project is technically complete. All seven planted flaws were documented, exploited, then fixed and re-tested; the three weaknesses found on the way (O1 to O3) are fixed; the leaked key was revoked, then purged from history; runtime detection and the incident response plan are in place and were exercised. Seven checks run in CI (the five required by the course, ZAP and the tests), and `main` and `secure` only accept merges that pass all of them. The vulnerable baseline is the tag `v0-vulnerable`, the secured version the tag `v1-secure`. What remains is for the team only: see Next steps. The theme is pending validation by the professor.
 
 | Step | Status |
 | --- | --- |
@@ -16,7 +16,7 @@ All seven planted flaws were documented, exploited, then fixed and re-tested. Th
 | 4. Hardened container and five-check CI, with proof that it blocks | Done |
 | 5. Hardened Kubernetes deployment and Kyverno | Done |
 | 6. Authenticated ZAP in the pipeline | Done: F02, F03 and F04 confirmed on the baseline |
-| 7. Fix each flaw and re-test | Done: all seven fixed and re-tested, merged into `secure` |
+| 7. Fix each flaw and re-test | Done: F01 to F07 and O1 to O5 fixed and re-tested |
 | 8. Revoke-then-purge demonstration | Done: revoked, verified, purged and verified (`docs/f05-revoke-then-purge.md`) |
 | 9. Runtime detection and incident response plan | Done (merged into `main` through #11 and #12); P1 and P2 drills run as technical run-throughs on 2026-11-24, team rehearsal planned |
 | 10. Report, slides, contribution sheet and AI declaration | Report written (`docs/rapport/`), only team information left; defence deck and talk script built (`docs/presentation/DocVault-soutenance.pptx`), visual check in PowerPoint pending; Annexe B template ready, sheets to fill; AI log up to date |
@@ -29,7 +29,7 @@ All seven planted flaws were documented, exploited, then fixed and re-tested. Th
 - Vulnerability register for F01 to F07
 - Runtime detection: application alerts DV-A1 to DV-A4 and Falco rules DV-R1 to DV-R4, each proven by a demo in the `DAST (ZAP)` job ([runtime-detection.md](runtime-detection.md))
 - Dependabot (alerts, security updates and weekly version updates with a 14-day cooldown) and protection of `secure` with the same seven required checks as `main` (2026-11-24)
-- Account controls for incident response: admin password reset, disable and enable, sign one user out everywhere (session version in the cookie), own password change; audit log with client address and request ID, CSV export (on `feat/account-controls`, not merged yet)
+- Account controls for incident response: admin password reset, disable and enable, sign one user out everywhere (session version in the cookie), own password change; audit log with client address and request ID, CSV export (merged through #14)
 - Incident response plan with seven playbooks ([incident-response-plan.md](incident-response-plan.md)); no drill run yet
 - Repository made public on 2026-11-22, so that `main` can require the checks (branch protection is not available on private repositories in the free plan)
 - `main` protection: pull request required, all seven checks (five static, ZAP and the tests) must pass, applies to admins
@@ -76,6 +76,7 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 | O1 to O3 on a fresh kind cluster, 2026-11-24 | Deploy checks passed, Falco quiet; DV-A1 to DV-A4 and DV-R1 to DV-R4 detected; ZAP passed. ZAP's fuzzing of the login form locked `alice` (209 failures, then 213 attempts refused with 429), while ZAP kept its session (582 authenticated page loads) |
 | Account controls, 2026-11-24 | 76 tests passed; upgrade from migration 0001 to 0003 on PostgreSQL with existing data; on Compose: revoke, disable, enable, CSV export with address and request ID checked; `run_all.py` 0 tested flaws exploitable; DV-A1 to DV-A4 detected |
 | Drills P1 and P2 on kind, 2026-11-24 | Scripted run-throughs: alert within 0.2 s, containment within 2.4 s, recovery verified (0 tested flaws exploitable); two findings fed back into the playbooks ([record](evidence/drills/2026-11-24-p1-p2.md)) |
+| Merges of #13 to #17 and #16 into `secure`, 2026-11-25 | Each pull request was brought up to date with `secure` and passed all required checks again before its merge (runs 45539111155, 45539741333, 45540542419, 45541316466) |
 | CI run 45083855384, 2026-11-23 | ZAP blocked with the same 4 High alerts, plus one false positive on `/documents/1/share`; report in `docs/evidence/` |
 | CI run 45071375296 on pull request #2, 2026-11-22 | All five checks failed with the same results as locally; log in `docs/evidence/` |
 
@@ -95,10 +96,15 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 
 ## Security issues
 
-The seven planted flaws and the five unplanned weaknesses (O1 to O5) are fixed; O1 to O3 on `fix/o1-o3`, not merged yet. See the [vulnerability register](vulnerability-register.md).
+The seven planted flaws and the five unplanned weaknesses (O1 to O5) are fixed; O1 to O3 merged through #13. See the [vulnerability register](vulnerability-register.md).
 
 ## Next steps
 
-1. Merge #13 (O1 to O3), #14 (account controls) and the repository hygiene pull request into `secure`, then `secure` into `main`.
-2. Rehearse P1 and P2 as a team, without the scripts, and record the times.
-3. Step 10, team only: fill in the report's placeholders, the Annexe B sheets and the AI log's validation column; open the deck in PowerPoint and check every slide; rehearse the talk.
+Engineering work is complete. Only the team can do what is left:
+
+1. Fill in the report's `[À compléter]` placeholders: submission date, who holds roles M1 to M4, Annexe A status, screenshots (Annexe C), the GitHub Support decision about pull request references #2 to #9.
+2. Each member fills in an Annexe B sheet from [the template](rapport/annexe-b-modele.md).
+3. Complete the "Validated by the student" column of the [AI usage declaration](ai-usage.md), and say whether AI was used for the 18/11 slides, talk script and figure.
+4. Open the defence deck in PowerPoint and check every slide (it was validated but never rendered here).
+5. Rehearse playbooks P1 and P2 as a team, then rehearse the talk.
+6. Remove the "État du brouillon" note at the top of the report before submitting.
