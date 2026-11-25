@@ -18,7 +18,9 @@ env:
         parameters:
           loginPageUrl: ${DAST_TARGET}/login
           loginRequestUrl: ${DAST_TARGET}/login
-          loginRequestBody: "username={%username%}&password={%password%}"
+          # csrf_token is a name ZAP knows as an anti-CSRF token: it fetches
+          # loginPageUrl and puts the fresh value in place of this one (O1 fix).
+          loginRequestBody: "csrf_token=zap&username={%username%}&password={%password%}"
         verification:
           method: poll
           pollUrl: ${DAST_TARGET}/documents

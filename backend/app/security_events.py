@@ -23,6 +23,8 @@ from collections import deque
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from app import request_context
+
 ALLOWED_FIELDS = (
     "rule",
     "name",
@@ -37,8 +39,11 @@ ALLOWED_FIELDS = (
     "reason",
     "count",
     "window_seconds",
+    "seconds",
+    "request_id",
 )
 MAX_TEXT_LENGTH = 100
+MAX_TRACKED = 10_000
 
 
 @dataclass(frozen=True)
@@ -91,6 +96,8 @@ def emit(event: str, **fields: object) -> None:
         "ts": datetime.now(UTC).isoformat(timespec="milliseconds"),
         "event": event,
     }
+    # The ID of the request being handled, shared with the audit log.
+    fields.setdefault("request_id", request_context.request_id())
     for key in ALLOWED_FIELDS:
         if fields.get(key) is not None:
             record[key] = _clean(fields[key])
@@ -109,6 +116,7 @@ def _observe(rule: Rule, key: str, now: float | None = None) -> int | None:
     now = time.monotonic() if now is None else now
     slot = (rule.id, key)
     with _lock:
+        _prune(now)
         times = _events.setdefault(slot, deque())
         times.append(now)
         while times and now - times[0] > rule.window_seconds:
@@ -119,6 +127,19 @@ def _observe(rule: Rule, key: str, now: float | None = None) -> int | None:
             _last_alert[slot] = now
             return count
     return None
+
+
+def _prune(now: float) -> None:
+    """Drops stale counters, so a flood of made-up usernames cannot fill memory.
+
+    Called with the lock held.
+    """
+    if len(_events) <= MAX_TRACKED:
+        return
+    longest = max(rule.window_seconds for rule in RULES)
+    for slot in [s for s, times in _events.items() if not times or now - times[-1] > longest]:
+        del _events[slot]
+        _last_alert.pop(slot, None)
 
 
 def _alert(rule: Rule, count: int, **fields: object) -> None:
@@ -145,10 +166,15 @@ def login_succeeded(username: str, ip: str | None) -> None:
     emit("login_succeeded", username=username, ip=ip)
 
 
-def invalid_session(ip: str | None, path: str, expired: bool) -> None:
-    """A session cookie failed its check. Only a bad signature is an alert."""
-    emit("invalid_session", ip=ip, path=path, reason="expired" if expired else "bad_signature")
-    if not expired:
+def invalid_session(ip: str | None, path: str, reason: str) -> None:
+    """A session cookie failed its check. Only a bad signature is an alert.
+
+    Reasons: "bad_signature" (forged, or signed with an old key), "expired",
+    "revoked" (the user's sessions were revoked or the password changed),
+    "disabled" (the account was disabled), "unknown_user".
+    """
+    emit("invalid_session", ip=ip, path=path, reason=reason)
+    if reason == "bad_signature":
         count = _observe(FORGED_SESSION, f"ip:{ip}")
         if count is not None:
             _alert(FORGED_SESSION, count, ip=ip, path=path)
@@ -176,6 +202,21 @@ def role_denied(username: str, ip: str | None, method: str, path: str) -> None:
     count = _observe(PRIVILEGE_PROBE, f"username:{username}")
     if count is not None:
         _alert(PRIVILEGE_PROBE, count, username=username, ip=ip, path=path)
+
+
+def login_throttled(username: str, ip: str | None, seconds: int) -> None:
+    """A sign-in refused because the username is locked (O2 fix)."""
+    emit("login_throttled", username=username, ip=ip, seconds=seconds)
+
+
+def account_locked(username: str, ip: str | None, seconds: int) -> None:
+    """Too many failed sign-ins: the username is now locked (O2 fix)."""
+    emit("account_locked", username=username, ip=ip, seconds=seconds)
+
+
+def csrf_rejected(username: str | None, ip: str | None, path: str) -> None:
+    """A POST without a valid CSRF token (O1 fix): a forged form, or a stale page."""
+    emit("csrf_rejected", username=username, ip=ip, path=path)
 
 
 def reset() -> None:

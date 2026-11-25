@@ -2,7 +2,7 @@
 
 This plan says what the team does when DocVault may be under attack or a secret may be exposed: who leads, how fast, which commands to run, and how to prove the problem is fixed. It covers the project period and the demo. It is written for a four-person student team with no on-call rota, so the response targets are best effort during working hours.
 
-Status on 2026-11-23: draft, not yet exercised. No drill has been run (see [Drills](#9-drills)). The application alerts (DV-A1 to DV-A4) and the Falco rules (DV-R1 to DV-R4) are being built in parallel and are not in `main` yet. Commands marked *(untested)* have not been run against a live environment; the first drills must confirm them.
+Status on 2026-11-24: P1 and P2 were run once each as technical drills (scripted by Claude Code, not by the team; see [Drills](#9-drills)); a team rehearsal is still to be done. The application alerts (DV-A1 to DV-A4) and the Falco rules (DV-R1 to DV-R4) are in `main` and proven on every CI run. Commands marked *(untested)* have not been run against a live environment; the first drills must confirm them.
 
 The phases follow the classic cycle from NIST SP 800-61. The assets (AS1 to AS6) and threats (T01 to T18) are those of the [threat model](threat-model.md). Fixed flaws (F01 to F07) and open weaknesses (O1 to O3) are in the [vulnerability register](vulnerability-register.md).
 
@@ -93,16 +93,18 @@ These targets are sized for students working part-time and are not a service com
 
 ### Default severity per alert
 
-| Source | ID | Alert severity | Default level | Raise when |
+The third column is the severity written in the alert itself (Falco's own priority scale for DV-R). The incident level is the team's decision and can be higher: a Falco "Warning" for a shell in a container is still a SEV1 until a team member explains it.
+
+| Source | ID | Severity in the alert | Default level | Raise when |
 | --- | --- | --- | --- | --- |
 | App | DV-A1 `brute_force_suspected` | Medium | SEV3 | SEV2 if a `login` for the targeted account follows the failures; SEV1 if that account then did something its owner denies |
 | App | DV-A2 `forged_session` | High | SEV2 | SEV1 if the current signing key may be exposed, or the audit log shows actions nobody on the team made |
 | App | DV-A3 `access_probing` | Medium | SEV2 | SEV1 if the account obtained a document it had no right to |
 | App | DV-A4 `privilege_probe` | Low | SEV3 | SEV2 if it comes with DV-A3 or an unexpected role change; SEV1 if a non-admin got an admin page |
-| Falco | DV-R1 shell in a DocVault container | High | SEV1 | Not an incident if a team member's `kubectl exec` explains it |
-| Falco | DV-R2 unexpected program in the app container | High | SEV1 | Same |
-| Falco | DV-R3 sensitive file read | High | SEV1 | Same |
-| Falco | DV-R4 unexpected outbound connection *(may not exist)* | Medium | SEV2 | SEV1 if the connection succeeded, because the network policy then failed |
+| Falco | DV-R1 shell in a DocVault container | Warning | SEV1 | Not an incident if a team member's `kubectl exec` explains it |
+| Falco | DV-R2 unexpected program in the app container | Warning | SEV1 | Same |
+| Falco | DV-R3 sensitive file read | Critical | SEV1 | Same |
+| Falco | DV-R4 unexpected outbound connection | Warning | SEV2 | SEV1 if the connection succeeded, because the network policy then failed |
 | CI | Gitleaks finds a real secret | n/a | SEV1 | A confirmed false positive is not an incident: record an exception by fingerprint |
 | GitHub | Secret scanning alert or push protection block | n/a | SEV1 if the value is real | Enabled on 2026-11-23 |
 | CI | Trivy `HIGH` or `CRITICAL` with a fix, on `main` | n/a | SEV2 (`CRITICAL`), SEV3 (`HIGH`) | SEV1 if it is exploitable in DocVault, like F06 was |
@@ -156,17 +158,17 @@ docker compose logs --timestamps app | grep security_alert
 kc -n falco logs -l app.kubernetes.io/name=falco --tail=-1 --timestamps
 ```
 
-Exporting the audit log. The `/audit` page shows only the latest 200 entries, so export the whole table *(untested on PostgreSQL)*:
+Exporting the audit log. The `/audit` page shows only the latest 200 entries. An admin or auditor exports the whole table as CSV with the "Export everything as CSV" link on that page (`/audit/export.csv`; values a spreadsheet would run as formulas are neutralised, and the export itself is audited). Save it as `$IR/audit_logs.csv`. If the app is down, export it from the database instead:
 
 ```bash
-AUDIT_SQL="COPY (SELECT id, created_at, actor, action, target FROM audit_logs ORDER BY id) TO STDOUT WITH CSV HEADER"
+AUDIT_SQL="COPY (SELECT id, created_at, actor, action, target, ip, request_id FROM audit_logs ORDER BY id) TO STDOUT WITH CSV HEADER"
 # kind:
 kc -n docvault exec statefulset/db -c postgres -- psql -U docvault -d docvault -c "$AUDIT_SQL" > "$IR/audit_logs.csv"
 # Compose:
 docker compose exec -T db psql -U docvault -d docvault -c "$AUDIT_SQL" > "$IR/audit_logs.csv"
 ```
 
-The audit log records `login`, `login_failed`, `upload`, `download`, `share`, `update_metadata`, `delete`, `create_user` and `change_role`, with the actor, the target and the time. It does not record the client address, detail-page views, previews or refused requests.
+The audit log records `login`, `login_failed`, `login_disabled`, `upload`, `download`, `preview`, `share`, `update_metadata`, `delete`, `create_user`, `change_role`, `reset_password`, `revoke_sessions`, `disable_account`, `enable_account`, `change_password`, `change_password_failed` and `export_audit`, with the actor, the target, the time, the client address and the request ID. It does not record detail-page views or refused requests; those are in the application's security events, which carry the same request ID. Every response returns that ID in its `X-Request-ID` header, so a user's report can be matched to the log.
 
 At the end of evidence capture, fingerprint the files so later changes can be detected:
 
@@ -177,6 +179,8 @@ At the end of evidence capture, fingerprint the files so later changes can be de
 ### P1: leaked or forged signing key
 
 **Trigger:** DV-A2; Gitleaks fails on a real secret (CI `Secret scan (Gitleaks)` or `bash scripts/ci/scan.sh gitleaks`); a GitHub secret scanning alert or push protection block; a member reports pasting a key or `.env` somewhere.
+
+**A leaked key or one stolen session?** If one user's cookie was stolen (a shared computer, a copied browser profile) but the key is safe, an admin clicks "Sign out everywhere" for that user on `/admin/users`: only that user's sessions end. Rotate the key only when the key itself may be known.
 
 **What DV-A2 does and does not tell you.** DV-A2 fires when a cookie's signature does not match the current key, so the forged session was *refused*. The most likely source is the old F05 key, which anyone could copy while the repository was public; seeing it means the revocation is working. The dangerous case is the opposite: if the *current* key leaks, forged cookies are valid and raise no alert. That case is found through Gitleaks, GitHub secret scanning, or audit entries nobody made.
 
@@ -229,10 +233,13 @@ kc -n docvault create secret generic docvault-secrets --from-file="$d" --dry-run
 rm -rf "$d"
 kc -n docvault rollout restart deployment/docvault
 kc -n docvault rollout status deployment/docvault --timeout=300s
+# rollout status returns while the old pod is still terminating, and requests
+# can still reach it and be reset (seen in both drills): wait for one pod.
+until [ "$(kc -n docvault get pods -l app=docvault --no-headers | wc -l)" = 1 ]; do sleep 1; done
 note "SECRET_KEY rotated"
 ```
 
-**Consequence:** every user is signed out, because every cookie was signed with the old key. Sessions are stateless signed cookies with no server-side list, so rotating the key is the only way to end a stolen or forged session. Expect DV-A2 from old cookies for up to 8 hours (the cookie lifetime). Record the rotation time, so those alerts can be told apart.
+**Consequence:** every user is signed out, because every cookie was signed with the old key. For one stolen session, "Sign out everywhere" for that user is enough (P1 drill, scenario A); rotating the key is needed when the key itself may be known. Expect DV-A2 from old cookies for up to 8 hours (the cookie lifetime). Record the rotation time, so those alerts can be told apart.
 
 **Confirm the old key no longer works**
 
@@ -346,7 +353,7 @@ docker exec docvault-control-plane crictl ps -a > "$IR/node-containers.txt"   # 
 # audit log export: see "Command conventions"
 ```
 
-These copy files out of the pod. They run programs in the container, so Falco will raise DV-R1 or DV-R2 for them: note the time before running them *(untested)*.
+These copy files out of the pod. They run programs in the container, so Falco will raise DV-R1 or DV-R2 for them: note the time before running them (tested in the P2 drill).
 
 ```bash
 note "evidence capture inside the pod starts (expect DV-R1/DV-R2)"
@@ -374,11 +381,12 @@ Compose has no quarantine, but a stopped container keeps its filesystem: `docker
 - Find and fix the entry point before restoring the service: `run_all.py`, `scripts/ci/dast.sh` and `bash scripts/ci/scan.sh all` help to rule known classes in or out. A new flaw gets a register entry, a fix and a regression test in `backend/tests`, through a pull request.
 - Rotate every secret the pod could read:
   - **Signing key:** as in P1.
-  - **Database password.** `POSTGRES_PASSWORD` is only read when the database is first created, so changing the secret alone does nothing. Change it in the database first, then in `.env`, then redeploy *(untested)*:
+  - **Database password.** `POSTGRES_PASSWORD` is only read when the database is first created, so changing the secret alone does nothing. Change it in the database first, then in `.env`, then redeploy (tested in the P2 drill). The new value goes through standard input, never a command line:
     ```bash
-    kc -n docvault exec -it statefulset/db -c postgres -- psql -U docvault -d docvault -c '\password docvault'
-    # Put the same new value in POSTGRES_PASSWORD in .env, then:
+    # Put the new value in POSTGRES_PASSWORD in .env first, then:
     set -a; . ./.env; set +a
+    printf "ALTER ROLE docvault WITH PASSWORD '%s';\n" "$POSTGRES_PASSWORD" \
+      | kc -n docvault exec -i statefulset/db -c postgres -- psql -q -U docvault -d docvault
     scripts/ci/deploy.sh up
     ```
     In Compose: `docker compose exec db psql -U docvault -d docvault -c '\password docvault'`, update `.env`, then `docker compose up -d`.
@@ -402,7 +410,7 @@ The `quarantine` policy can stay: it selects no pod once the quarantined one is 
 - `scripts/ci/deploy.sh up` ends with its own checks: Kyverno must refuse a pod with no security context, the database must not answer a pod from another namespace, and `alice` must sign in.
 - `kc get clusterpolicy`: all four policies `Ready`. `kc -n docvault get networkpolicy`: `default-deny`, `allow-dns`, `app`, `db` (and `quarantine`).
 - In `$IR/pod.yaml`: `runAsUser: 10001`, `readOnlyRootFilesystem: true`, `automountServiceAccountToken: false`. If any is missing, Kyverno failed and that becomes its own finding.
-- Egress from the new app pod is blocked; this should time out, and Falco should raise DV-R2 (and DV-R4 if it exists) *(untested)*:
+- Egress from the new app pod is blocked; this should time out, and Falco should raise DV-R2 and DV-R4 *(untested; the Falco demo checks DV-R4 with another address)*:
   `kc -n docvault exec deploy/docvault -c app -- python -c "import socket; socket.create_connection(('1.1.1.1', 443), timeout=5)"`
 - `run_all.py` against `http://127.0.0.1:18000`: 0 tested flaws exploitable. It reports F07 as "not tested" since F06 is fixed, so check the user directly: `kc -n docvault exec deploy/docvault -c app -- id -u` must print 10001 (this raises DV-R2, as expected).
 
@@ -410,7 +418,7 @@ The `quarantine` policy can stay: it selects no pod once the quarantined one is 
 
 **Trigger:** DV-A1 (5 or more failed logins for the same username or client address within 60 seconds).
 
-**Known gap: O2.** DocVault has no login rate limit and no lockout. Nothing stops guessing except Argon2's cost per attempt. DV-A1 only tells us it is happening.
+**Automatic response (O2 fix).** After 5 failed sign-ins for one username within 5 minutes, that username is locked for 5 minutes: every attempt, even with the right password, gets HTTP 429 and an `account_locked`, then `login_throttled`, event. DV-A1 fires at the same 5th failure. Guessing is limited to about 1,400 tries a day per account, but anyone can lock a known username on purpose (the lock is short for that reason).
 
 **First 15 minutes**
 
@@ -432,13 +440,15 @@ The `quarantine` policy can stay: it selects no pod once the quarantined one is 
 
 | Option | Exists? | How |
 | --- | --- | --- |
-| Reset the account's password from the admin page | **No.** `/admin/users` can only create users and change roles. There is no password change, reset or account disable route | — |
+| Reset the account's password from the admin page | Yes | `/admin/users`, "Reset password". It also signs the user out everywhere and lifts a login lock. Give the new password to the owner by phone or in person, never in the team chat; the owner then changes it on `/account` |
 | Change the password directly in the database | Yes, by hand *(tested on SQLite only)* | Snippet below. The account owner chooses the new password and runs it, so it never goes through chat |
-| Sign out an attacker who already got in | Only by rotating the signing key, which signs out everyone | P1 rotation |
+| Sign out an attacker who already got in | Yes, for one account | `/admin/users`, "Sign out everywhere" (or a password reset, which does it too) |
+| Disable the account while investigating | Yes | `/admin/users`, "Disable". Its sessions end at once; sign-in answers like a wrong password, and the audit log records `login_disabled` |
 | Block the source address | Not in the current setups: there is no reverse proxy or firewall in front of the app, and in kind the app may see the node address for every client (not verified) | — |
+| Lift a lock early (the real owner is locked out) | Yes | A password reset from `/admin/users` lifts it. Otherwise wait 5 minutes, or restart the app (`kc -n docvault rollout restart deployment/docvault`), which clears every lock |
 | Cut access entirely | Yes | kind: `kc -n docvault delete service docvault-test-access` (restore with `kc apply -f deploy/test/access.yaml`). Compose: `docker compose stop app` |
 
-Emergency password change. The first line of standard input is the username, the second the new password; nothing appears in the process list. In kind it runs in the app container, which has the database password *(untested in a container)*:
+Fallback, when no admin can sign in (for example the admin account itself is compromised): an emergency password change in the database. The first line of standard input is the username, the second the new password; nothing appears in the process list. In kind it runs in the app container, which has the database password *(untested in a container)*:
 
 ```bash
 kc -n docvault exec -i deploy/docvault -c app -- python -c '
@@ -461,16 +471,16 @@ print("Password changed for", username)
 # Compose: replace the first line with  docker compose exec -T app python -c '...
 ```
 
-This runs a program in the app container, so Falco will raise DV-R2: announce it first. A password change does not end existing sessions; rotate the key if the account was used by someone else.
+This runs a program in the app container, so Falco will raise DV-R2: announce it first. This fallback does not end existing sessions: afterwards, sign the user out everywhere from `/admin/users`, or rotate the key if no admin account can be trusted.
 
-**Eradication: the planned fix (O2, owner M1)**
+**Eradication**
 
-Limit failed logins per username and per client address, answer HTTP 429 when the limit is reached, and keep recording `login_failed` in the audit log. Add a test in `backend/tests` that the sixth quick failure is refused.
+The per-username lock (O2 fix, [`login_throttle.py`](../backend/app/login_throttle.py)) is already in place. If the guesses come from many usernames (credential stuffing), each name is only tried a few times and the lock does not trigger: then the only lever left is blocking the source, which needs a proxy or firewall in front of the app (not in the current setups).
 
 **Verification**
 
-- Six failed logins in a row for one username raise one DV-A1 alert. After the O2 fix, they also get HTTP 429.
-- `python -m pytest backend/tests -q` passes, including the new rate-limit test.
+- Six failed logins in a row for one username raise one DV-A1 alert, and the sixth gets HTTP 429.
+- `python -m pytest backend/tests -q` passes, including the O2 tests in `test_weaknesses.py`.
 - The audit export shows no further `login` for the targeted account by anyone but its owner.
 
 ### P4: document access probing or data exposure
@@ -503,14 +513,14 @@ Limit failed logins per username and per client address, answer HTTP 429 when th
   SQL
   ```
   Each row is a download by someone without a current right to the document. Rows with no owner are deleted documents: check them by hand.
-- Detail pages and previews are not in the audit log. Look for successful ones in uvicorn's access log, which records the path and status but not the user:
+- Previews are in the audit log (`preview`). Detail pages are not; look for successful ones in uvicorn's access log, which records the path and status but not the user:
   `grep -E '"GET /documents/[0-9]+(/preview|/download)? HTTP/[0-9.]+" 200' "$IR/app.log"`
 - Which owners are affected? The query's `owner` column lists them.
 
 **Containment**
 
 - If an access succeeded, the access check has a hole. Cut access (`kc -n docvault delete service docvault-test-access`, or `docker compose stop app`) until it is fixed.
-- If the account is misused by someone else: change its password (P3) and rotate the key to end its session (P1). There is no way to disable an account.
+- If the account is misused by someone else: disable it on `/admin/users` while investigating (its sessions end at once), then reset its password (P3) and enable it again.
 - If only denials were seen, the control held: keep watching and record it.
 
 **Eradication**
@@ -747,12 +757,13 @@ Action items feed the [vulnerability register](vulnerability-register.md): a new
 
 ## 9. Drills
 
-Each drill follows the relevant playbook for real, with real evidence capture, and ends with a review. Nothing below has been run yet.
+Each drill follows the relevant playbook for real, with real evidence capture, and ends with a review. The record of the first two, with their timelines and findings, is in [`docs/evidence/drills/2026-11-24-p1-p2.md`](evidence/drills/2026-11-24-p1-p2.md). They were scripted and run by Claude Code, so their times are a script's, not a team's.
 
 | Date | Scenario | Alert that fired | Time to detect | Time to contain | What went wrong | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| To be scheduled | P2 drill using the detection demo (`scripts/security/detection-demo.sh`, being built) | | | | | Planned, not done |
-| To be scheduled | P1 drill: DV-A2 forged session (`run_all.py` with a random `DOCVAULT_LEAKED_KEY`, then a key rotation) | | | | | Planned, not done |
+| 2026-11-24 | P1: forged admin cookie, then a stolen cookie (A), then the key treated as exposed (B) | DV-A2 | 0.15 s | 2.4 s (A, one user signed out); 20 s (B, key rotated) | The first request after the restart was reset: `rollout status` returned while the old pod was terminating. Playbook updated | Done, technical run-through |
+| 2026-11-24 | P2: shell, `id`, `cat /etc/shadow` in the app container | DV-R1, DV-R2, DV-R3 | 0.2 s | 1.4 s (quarantine) | Same reset after the restart; `/healthz` even answered from the old pod. DB password rotation done without `\password`. Playbook updated | Done, technical run-through |
+| To be scheduled | P1 and P2 again, by the team, from the alert to the review, without the scripts | | | | | Planned |
 
 ## 10. Known limits
 
@@ -761,13 +772,13 @@ Each drill follows the relevant playbook for real, with real evidence capture, a
 - **A valid forgery is silent.** DV-A2 sees only cookies with a bad signature. If the current key leaks, forged sessions look legitimate.
 - **No central log storage, retention or paging.** Alerts are lines on stdout. They are lost when the pod or container is deleted, and nobody is woken up. Someone must be watching.
 - **Falco runs only in the kind test cluster.** Compose and CI have no runtime detection. Our own `kubectl exec` commands also trigger DV-R1 and DV-R2, and the `prepare` init container starts a shell (`sh -c`) at each pod start, which DV-R1 must not count.
-- **The audit log is incomplete and not tamper-proof.** It has no client address, no correlation ID (planned under T08), no record of views, previews or refused requests, and it lives in the same database the app account can write. A compromised app pod could edit it. The `/audit` page shows only the latest 200 entries.
-- **No account controls.** There is no password change, reset, lockout or disable feature, and no way to end one user's session: rotating the key signs everyone out.
-- **No login rate limit (O2).** P3 can detect guessing but not stop it, except by cutting access.
+- **The audit log is incomplete and not tamper-proof.** It records the client address and request ID, but not detail-page views or refused requests (those are only in the security events on stdout). It lives in the same database the app account can write, so a compromised app pod could edit it.
+- **Account controls are admin-only.** Admins can reset passwords, disable accounts and sign one user out everywhere, and users can change their own password, but there is no self-service reset by e-mail and no multi-factor sign-in. A compromised admin account can do all of this too; disable it from another admin account.
+- **Login lock per username only (O2 fix).** It stops guessing against one account, not credential stuffing spread over many usernames, and anyone can lock a known account for 5 minutes.
 - **No HTTPS locally.** Compose and kind run on plain HTTP with `SESSION_COOKIE_SECURE=false`, so cookies are not protected in transit there.
 - **Network blocking is coarse.** There is no reverse proxy or firewall in front of the app. Blocking one address is not possible in the current setups, and in kind the app may not see real client addresses.
 - **Network policies only add allowed traffic.** The quarantine policy in P2 is not in the manifests and needs the `allow-dns` patch to isolate a pod completely. Enforcement depends on the cluster's network plugin and is tested on kind only.
 - **GitHub keeps copies after a purge.** Pull request references and cached views keep old commits until GitHub Support removes them. Anyone who cloned while the repository was public keeps the history. This is why every leaked secret is rotated first.
 - **Dependabot alerts are off.** New advisories reach us only when Trivy runs. `--ignore-unfixed` hides critical issues with no fix, and the PostgreSQL image is not scanned.
 - **One repository admin.** Only the owner account can change settings, disable Actions or lift branch protection. Pull requests need 0 approvals, so one member can merge alone once the checks pass.
-- **Several commands are untested,** as marked. The drills are where they get confirmed or corrected.
+- **A few commands are still untested,** as marked (the node container listing and the egress check from a new pod). The P1 and P2 drills confirmed the others, including the quarantine, the evidence capture and the secret rotations.
