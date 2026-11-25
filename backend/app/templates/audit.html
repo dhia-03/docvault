@@ -2,8 +2,9 @@
 {% block title %}Audit log - DocVault{% endblock %}
 {% block content %}
 <h1>Audit log</h1>
+<p>The 200 most recent entries. <a href="/audit/export.csv">Export everything as CSV</a>.</p>
 <table>
-  <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Target</th></tr></thead>
+  <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Target</th><th>Address</th><th>Request ID</th></tr></thead>
   <tbody>
     {% for entry in entries %}
     <tr>
@@ -11,9 +12,11 @@
       <td>{{ entry.actor }}</td>
       <td>{{ entry.action }}</td>
       <td>{{ entry.target }}</td>
+      <td>{{ entry.ip or "" }}</td>
+      <td><code>{{ entry.request_id or "" }}</code></td>
     </tr>
     {% else %}
-    <tr><td colspan="4">No events recorded.</td></tr>
+    <tr><td colspan="6">No events recorded.</td></tr>
     {% endfor %}
   </tbody>
 </table>

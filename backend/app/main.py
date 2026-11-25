@@ -5,6 +5,8 @@ a "VULN" comment and described in docs/vulnerability-register.md. Run it only
 on localhost or in a dedicated test environment.
 """
 
+import csv
+import io
 import os
 import re
 import uuid
@@ -26,7 +28,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
-from app import csrf, login_throttle, security_events
+from app import csrf, login_throttle, request_context, security_events
 from app.auth import (
     SESSION_COOKIE,
     SESSION_MAX_AGE_SECONDS,
@@ -108,6 +110,16 @@ async def csrf_cookie_and_upload_limit(request: Request, call_next) -> Response:
             samesite="strict",
         )
     return response
+
+
+# Defined last, so it wraps the other middleware and every log line of the
+# request, including theirs, carries the same ID.
+@app.middleware("http")
+async def assign_request_id(request: Request, call_next) -> Response:
+    request_id = request_context.start(request.client.host if request.client else None)
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
@@ -124,8 +136,20 @@ def redirect(url: str) -> RedirectResponse:
 
 
 def audit(db: Session, actor: str, action: str, target: str = "") -> None:
-    db.add(AuditLog(actor=actor, action=action, target=target))
+    # The address and request ID come from the request being handled.
+    db.add(
+        AuditLog(
+            actor=actor,
+            action=action,
+            target=target[:255],
+            ip=request_context.client_ip(),
+            request_id=request_context.request_id(),
+        )
+    )
     db.commit()
+
+
+MIN_PASSWORD_LENGTH = 12
 
 
 def get_document(db: Session, document_id: int) -> Document:
@@ -251,6 +275,18 @@ def login(
         )
 
     user = db.scalar(select(User).where(User.username == username))
+    if user is not None and user.disabled and verify_password(user.password_hash, password):
+        # Same answer as a wrong password, so the form does not reveal which
+        # accounts are disabled; the audit log records the real reason.
+        audit(db, user.username, "login_disabled")
+        security_events.login_failed(username, client_ip(request))
+        return render(
+            request,
+            "login.html",
+            status_code=401,
+            user=None,
+            error="Invalid username or password.",
+        )
     if user is None or not verify_password(user.password_hash, password):
         audit(db, username[:64], "login_failed")
         security_events.login_failed(username, client_ip(request))
@@ -395,6 +431,7 @@ def preview_document(
     # F04 fix: the preview is chosen by document ID, after an access check,
     # instead of by a file path from the request.
     document = get_readable_document(db, document_id, user)
+    audit(db, user.username, "preview", f"document:{document.id}")
     with open(stored_file(document), encoding="utf-8", errors="replace") as source:
         return source.read()
 
@@ -480,7 +517,7 @@ def admin_users(
 @app.post("/admin/users")
 def create_user(
     username: str = Form(..., min_length=3, max_length=64),
-    password: str = Form(..., min_length=8),
+    password: str = Form(..., min_length=MIN_PASSWORD_LENGTH),
     role: str = Form(...),
     user: User = Depends(require_role("admin")),
     db: Session = Depends(get_db),
@@ -515,6 +552,122 @@ def change_role(
     return redirect("/admin/users")
 
 
+def get_account(db: Session, user_id: int) -> User:
+    account = db.get(User, user_id)
+    if account is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    return account
+
+
+@app.post("/admin/users/{user_id}/password")
+def reset_password(
+    user_id: int,
+    new_password: str = Form(..., min_length=MIN_PASSWORD_LENGTH),
+    user: User = Depends(require_role("admin")),
+    db: Session = Depends(get_db),
+    _csrf: None = Depends(require_csrf),
+) -> Response:
+    """Sets a new password and signs the user out everywhere (playbook P3)."""
+    account = get_account(db, user_id)
+    account.password_hash = hash_password(new_password)
+    account.session_version += 1
+    db.commit()
+    login_throttle.unlock(account.username)
+    audit(db, user.username, "reset_password", account.username)
+    return redirect("/admin/users")
+
+
+@app.post("/admin/users/{user_id}/revoke-sessions")
+def revoke_sessions(
+    user_id: int,
+    user: User = Depends(require_role("admin")),
+    db: Session = Depends(get_db),
+    _csrf: None = Depends(require_csrf),
+) -> Response:
+    """Signs one user out everywhere, without rotating the key for everyone."""
+    account = get_account(db, user_id)
+    account.session_version += 1
+    db.commit()
+    audit(db, user.username, "revoke_sessions", account.username)
+    return redirect("/admin/users")
+
+
+@app.post("/admin/users/{user_id}/disable")
+def disable_account(
+    user_id: int,
+    user: User = Depends(require_role("admin")),
+    db: Session = Depends(get_db),
+    _csrf: None = Depends(require_csrf),
+) -> Response:
+    account = get_account(db, user_id)
+    if account.id == user.id:
+        raise HTTPException(status_code=400, detail="You cannot disable your own account")
+    account.disabled = True
+    account.session_version += 1
+    db.commit()
+    audit(db, user.username, "disable_account", account.username)
+    return redirect("/admin/users")
+
+
+@app.post("/admin/users/{user_id}/enable")
+def enable_account(
+    user_id: int,
+    user: User = Depends(require_role("admin")),
+    db: Session = Depends(get_db),
+    _csrf: None = Depends(require_csrf),
+) -> Response:
+    account = get_account(db, user_id)
+    account.disabled = False
+    db.commit()
+    audit(db, user.username, "enable_account", account.username)
+    return redirect("/admin/users")
+
+
+@app.get("/account", response_class=HTMLResponse)
+def account_page(request: Request, user: User = Depends(current_user)) -> Response:
+    return render(request, "account.html", user=user, error=None, done=False)
+
+
+@app.post("/account/password")
+def change_own_password(
+    request: Request,
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+    _csrf: None = Depends(require_csrf),
+) -> Response:
+    """Changes one's own password, and signs out every other session."""
+    error = None
+    if login_throttle.seconds_locked(user.username):
+        error = "Too many failed attempts. Try again later."
+    elif not verify_password(user.password_hash, current_password):
+        # Guessing through this form counts like failed sign-ins (O2).
+        login_throttle.record_failure(user.username)
+        audit(db, user.username, "change_password_failed")
+        error = "The current password is wrong."
+    elif len(new_password) < MIN_PASSWORD_LENGTH:
+        error = f"The new password must have at least {MIN_PASSWORD_LENGTH} characters."
+    if error:
+        return render(request, "account.html", status_code=400, user=user, error=error, done=False)
+
+    user.password_hash = hash_password(new_password)
+    user.session_version += 1
+    db.commit()
+    audit(db, user.username, "change_password")
+    response = render(request, "account.html", user=user, error=None, done=True)
+    # This browser stays signed in with a cookie for the new version.
+    response.set_cookie(
+        SESSION_COOKIE,
+        create_session(user),
+        max_age=SESSION_MAX_AGE_SECONDS,
+        httponly=True,
+        secure=SESSION_COOKIE_SECURE,
+        samesite="lax",
+    )
+    return response
+
+
 @app.get("/audit", response_class=HTMLResponse)
 def audit_log(
     request: Request,
@@ -525,3 +678,32 @@ def audit_log(
         select(AuditLog).order_by(AuditLog.id.desc()).limit(200)
     ).all()
     return render(request, "audit.html", user=user, entries=entries)
+
+
+def _csv_cell(value: object) -> str:
+    """Text for a CSV cell that a spreadsheet will not run as a formula."""
+    text = "" if value is None else str(value)
+    return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
+
+
+@app.get("/audit/export.csv")
+def export_audit_log(
+    user: User = Depends(require_role("admin", "auditor")),
+    db: Session = Depends(get_db),
+) -> Response:
+    """The whole audit log as CSV, for an investigation (playbook P4)."""
+    audit(db, user.username, "export_audit")
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["id", "created_at", "actor", "action", "target", "ip", "request_id"])
+    for entry in db.scalars(select(AuditLog).order_by(AuditLog.id)):
+        writer.writerow(
+            _csv_cell(v)
+            for v in (entry.id, entry.created_at, entry.actor, entry.action,
+                      entry.target, entry.ip, entry.request_id)
+        )
+    return Response(
+        buffer.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="docvault-audit.csv"'},
+    )
