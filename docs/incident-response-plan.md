@@ -410,7 +410,7 @@ The `quarantine` policy can stay: it selects no pod once the quarantined one is 
 
 **Trigger:** DV-A1 (5 or more failed logins for the same username or client address within 60 seconds).
 
-**Known gap: O2.** DocVault has no login rate limit and no lockout. Nothing stops guessing except Argon2's cost per attempt. DV-A1 only tells us it is happening.
+**Automatic response (O2 fix).** After 5 failed sign-ins for one username within 5 minutes, that username is locked for 5 minutes: every attempt, even with the right password, gets HTTP 429 and an `account_locked`, then `login_throttled`, event. DV-A1 fires at the same 5th failure. Guessing is limited to about 1,400 tries a day per account, but anyone can lock a known username on purpose (the lock is short for that reason).
 
 **First 15 minutes**
 
@@ -436,6 +436,7 @@ The `quarantine` policy can stay: it selects no pod once the quarantined one is 
 | Change the password directly in the database | Yes, by hand *(tested on SQLite only)* | Snippet below. The account owner chooses the new password and runs it, so it never goes through chat |
 | Sign out an attacker who already got in | Only by rotating the signing key, which signs out everyone | P1 rotation |
 | Block the source address | Not in the current setups: there is no reverse proxy or firewall in front of the app, and in kind the app may see the node address for every client (not verified) | — |
+| Lift a lock early (the real owner is locked out) | Only by restarting the app, which clears the in-memory counters: `kc -n docvault rollout restart deployment/docvault`. Otherwise wait 5 minutes | — |
 | Cut access entirely | Yes | kind: `kc -n docvault delete service docvault-test-access` (restore with `kc apply -f deploy/test/access.yaml`). Compose: `docker compose stop app` |
 
 Emergency password change. The first line of standard input is the username, the second the new password; nothing appears in the process list. In kind it runs in the app container, which has the database password *(untested in a container)*:
@@ -463,14 +464,14 @@ print("Password changed for", username)
 
 This runs a program in the app container, so Falco will raise DV-R2: announce it first. A password change does not end existing sessions; rotate the key if the account was used by someone else.
 
-**Eradication: the planned fix (O2, owner M1)**
+**Eradication**
 
-Limit failed logins per username and per client address, answer HTTP 429 when the limit is reached, and keep recording `login_failed` in the audit log. Add a test in `backend/tests` that the sixth quick failure is refused.
+The per-username lock (O2 fix, [`login_throttle.py`](../backend/app/login_throttle.py)) is already in place. If the guesses come from many usernames (credential stuffing), each name is only tried a few times and the lock does not trigger: then the only lever left is blocking the source, which needs a proxy or firewall in front of the app (not in the current setups).
 
 **Verification**
 
-- Six failed logins in a row for one username raise one DV-A1 alert. After the O2 fix, they also get HTTP 429.
-- `python -m pytest backend/tests -q` passes, including the new rate-limit test.
+- Six failed logins in a row for one username raise one DV-A1 alert, and the sixth gets HTTP 429.
+- `python -m pytest backend/tests -q` passes, including the O2 tests in `test_weaknesses.py`.
 - The audit export shows no further `login` for the targeted account by anyone but its owner.
 
 ### P4: document access probing or data exposure
@@ -763,7 +764,7 @@ Each drill follows the relevant playbook for real, with real evidence capture, a
 - **Falco runs only in the kind test cluster.** Compose and CI have no runtime detection. Our own `kubectl exec` commands also trigger DV-R1 and DV-R2, and the `prepare` init container starts a shell (`sh -c`) at each pod start, which DV-R1 must not count.
 - **The audit log is incomplete and not tamper-proof.** It has no client address, no correlation ID (planned under T08), no record of views, previews or refused requests, and it lives in the same database the app account can write. A compromised app pod could edit it. The `/audit` page shows only the latest 200 entries.
 - **No account controls.** There is no password change, reset, lockout or disable feature, and no way to end one user's session: rotating the key signs everyone out.
-- **No login rate limit (O2).** P3 can detect guessing but not stop it, except by cutting access.
+- **Login lock per username only (O2 fix).** It stops guessing against one account, not credential stuffing spread over many usernames, and anyone can lock a known account for 5 minutes.
 - **No HTTPS locally.** Compose and kind run on plain HTTP with `SESSION_COOKIE_SECURE=false`, so cookies are not protected in transit there.
 - **Network blocking is coarse.** There is no reverse proxy or firewall in front of the app. Blocking one address is not possible in the current setups, and in kind the app may not see real client addresses.
 - **Network policies only add allowed traffic.** The quarantine policy in P2 is not in the manifests and needs the `allow-dns` patch to isolate a pod completely. Enforcement depends on the cluster's network plugin and is tested on kind only.

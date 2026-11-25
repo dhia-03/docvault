@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 ROLES = ("admin", "member", "auditor")
@@ -29,6 +29,9 @@ class Document(Base):
     title: Mapped[str] = mapped_column(String(255))
     filename: Mapped[str] = mapped_column(String(255))
     stored_path: Mapped[str] = mapped_column(String(1024))
+    # Counted against the owner's quota (O3 fix). Documents uploaded before
+    # the column existed count as 0.
+    size_bytes: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
     tags: Mapped[str] = mapped_column(String(1024), default="")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

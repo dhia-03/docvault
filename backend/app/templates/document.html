@@ -16,18 +16,21 @@
 {% if document.owner_id == user.id %}
 <h2>Share</h2>
 <form class="row" method="post" action="/documents/{{ document.id }}/share">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <label>Username <input name="username" required></label>
   <button>Share</button>
 </form>
 
 <h2>Metadata (YAML)</h2>
 <form class="stack" method="post" action="/documents/{{ document.id }}/metadata">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <label>Metadata <textarea name="metadata" rows="4" placeholder="tags: [finance, 2026]"></textarea></label>
   <button>Save metadata</button>
 </form>
 
 <h2>Delete</h2>
 <form method="post" action="/documents/{{ document.id }}/delete">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <button class="danger">Delete document</button>
 </form>
 {% endif %}

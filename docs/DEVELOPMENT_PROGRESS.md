@@ -69,6 +69,7 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 | pytest suite (`backend/tests/`), 2026-11-23 | 37 passed on the fixed code; on `secure` before the F01 and F03 fixes, exactly the 7 F01/F03 tests failed |
 | History purge, 2026-11-23 | Fresh clone: old value found 0 times in any commit; Gitleaks clean on working tree and 22 commits |
 | Step 9 end to end on a fresh kind cluster, 2026-11-23 | Deploy checks passed with Falco quiet; app demo: DV-A1 to DV-A4 detected; ZAP passed; Falco demo: DV-R1 to DV-R4 detected (7 of 7 checks) |
+| O1 to O3 on a fresh kind cluster, 2026-11-24 | Deploy checks passed, Falco quiet; DV-A1 to DV-A4 and DV-R1 to DV-R4 detected; ZAP passed. ZAP's fuzzing of the login form locked `alice` (209 failures, then 213 attempts refused with 429), while ZAP kept its session (582 authenticated page loads) |
 | CI run 45083855384, 2026-11-23 | ZAP blocked with the same 4 High alerts, plus one false positive on `/documents/1/share`; report in `docs/evidence/` |
 | CI run 45071375296 on pull request #2, 2026-11-22 | All five checks failed with the same results as locally; log in `docs/evidence/` |
 
@@ -89,12 +90,11 @@ Run locally with Docker on 2026-11-09, unless dated otherwise.
 
 ## Security issues
 
-The seven planted flaws and O4, O5 are fixed. Three unplanned weaknesses are open: O1 (no CSRF tokens), O2 (no login rate limit) and O3 (no upload size limit). See the [vulnerability register](vulnerability-register.md).
+The seven planted flaws and the five unplanned weaknesses (O1 to O5) are fixed; O1 to O3 on `fix/o1-o3`, not merged yet. See the [vulnerability register](vulnerability-register.md).
 
 ## Next steps
 
 1. Merge the step 9 pull request into `secure`, then `secure` into `main`.
 2. Run the two planned drills (P2 with the Falco demo, P1 with a forged session) and record them in the plan.
 3. Decide on the gaps the incident response plan found: no password reset or account disable, no way to sign out one user, audit log without client address or correlation ID, Dependabot off, `secure` not protected.
-4. Fix O1 to O3.
 5. Step 10: report, slides, Annexe B sheets and the AI declaration.

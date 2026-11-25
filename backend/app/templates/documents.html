@@ -28,6 +28,7 @@
 
 <h2>Upload a document</h2>
 <form class="stack" method="post" action="/documents" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <label>Title <input name="title" required maxlength="255"></label>
   <label>File <input name="file" type="file" required></label>
   <button>Upload</button>

@@ -46,7 +46,9 @@ from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
 
 import app.config  # noqa: E402
 import app.main  # noqa: E402
+from app import login_throttle, security_events  # noqa: E402
 from app.auth import SESSION_COOKIE, hash_password  # noqa: E402
+from app.csrf import CSRF_COOKIE, new_cookie_value, token_for  # noqa: E402
 from app.db import get_db  # noqa: E402
 from app.models import Base, User  # noqa: E402
 
@@ -56,6 +58,35 @@ USERS = (
     ("bob", "member"),
     ("auditor", "auditor"),
 )
+
+
+class FormClient(TestClient):
+    """A test client that submits forms the way a browser submits the app's.
+
+    It holds a CSRF cookie and adds the matching csrf_token field to every
+    POST, as the hidden field in each form does. Tests of the CSRF check
+    itself pass csrf=False, or their own csrf_token.
+    """
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.csrf_cookie = new_cookie_value()
+        self.cookies.set(CSRF_COOKIE, self.csrf_cookie)
+
+    def post(self, url, *args, csrf: bool = True, data=None, **kwargs):
+        if csrf:
+            data = {"csrf_token": token_for(self.csrf_cookie), **(data or {})}
+        return super().post(url, *args, data=data, **kwargs)
+
+
+@pytest.fixture(autouse=True)
+def fresh_counters() -> Iterator[None]:
+    """In-memory counters (alerts, login throttle) start empty for each test."""
+    security_events.reset()
+    login_throttle.reset()
+    yield
+    security_events.reset()
+    login_throttle.reset()
 
 
 @pytest.fixture(scope="session")
@@ -126,7 +157,7 @@ def make_client(app_instance) -> Iterator[Callable[[], TestClient]]:
     clients: list[TestClient] = []
 
     def make() -> TestClient:
-        client = TestClient(app_instance, follow_redirects=False)
+        client = FormClient(app_instance, follow_redirects=False)
         clients.append(client)
         return client
 

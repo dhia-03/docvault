@@ -68,4 +68,5 @@ A passing pipeline does not mean DocVault is secure.
 - Vulnerability scanners only find publicly known issues.
 - ZAP only tests the pages and inputs it reaches, as the single test user `alice`. It does not test access between users, so it cannot find F01.
 - ZAP did not report the stored XSS in document titles, only the reflected one.
+- ZAP's fuzzing of the login form locks its own account (`alice`) through the O2 login lock. The scan keeps the session it opened first, but could not sign in again for 5 minutes.
 - The ZAP environment is a throwaway kind cluster, not the final deployment. Hardening differences between the two are not tested.
