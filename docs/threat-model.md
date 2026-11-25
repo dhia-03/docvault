@@ -2,7 +2,7 @@
 
 Unauthorized access to confidential documents is DocVault's main risk, so access control, file handling and secret protection get the most attention.
 
-This model uses STRIDE and maps to [OWASP Top 10:2025](https://github.com/OWASP/Top10/tree/master/2025/docs/en). It describes the planned design as of 2026-11-09. No application code exists yet, so exact code locations will be recorded in the vulnerability register when each flaw is built, before it is fixed.
+This model uses STRIDE and maps to [OWASP Top 10:2025](https://github.com/OWASP/Top10/tree/master/2025/docs/en). It was written on 2026-11-09, before the application code, from the planned design; code locations are recorded in the vulnerability register. The controls column was updated as the controls were built.
 
 Risk ratings are qualitative judgments, not measurements.
 
@@ -64,20 +64,20 @@ flowchart LR
 
 | ID | Category | Element | Threat | Risk | Planned control | Flaw |
 | --- | --- | --- | --- | --- | --- | --- |
-| T01 | Spoofing | Login | Password guessing or credential stuffing | Medium | Login rate limit (not yet, O2), strong password hashing, failed-login logging and alert DV-A1 | |
+| T01 | Spoofing | Login | Password guessing or credential stuffing | Medium | Login lock per username (O2 fix), strong password hashing, failed-login logging and alert DV-A1 | |
 | T02 | Spoofing | Session | Session cookie stolen through script injection | High | `HttpOnly`, `Secure` and `SameSite` cookies; output encoding | F03 |
 | T03 | Spoofing | Session | Hard-coded signing key lets an attacker forge sessions | High | Key supplied at runtime and rotated after exposure | F05 |
 | T04 | Tampering | Database | SQL injection changes records or sharing rules | High | Parameterized queries | F02 |
 | T05 | Tampering | Document storage | Crafted file name writes outside the storage folder | High | Server-generated storage names; path checks | F04 |
 | T06 | Tampering | Dependencies and image | Vulnerable or compromised third-party component | High | Pinned versions, dependency and image scans | F06 |
 | T07 | Tampering | CI pipeline | Workflow abused to alter a build | Medium | Read-only token, actions and images pinned by digest | |
-| T08 | Repudiation | Sharing and deletion | User denies sharing or deleting a document | Medium | Audit log with user, action, time and correlation ID | |
+| T08 | Repudiation | Sharing and deletion | User denies sharing or deleting a document | Medium | Audit log with user, action, time, client address and request ID, exportable as CSV | |
 | T09 | Information disclosure | Document download | Changing a document ID opens another user's file | High | Ownership or share check on every request | F01 |
 | T10 | Information disclosure | Search | SQL injection extracts documents or password hashes | High | Parameterized queries, limited database account | F02 |
 | T11 | Information disclosure | Document storage | Path traversal reads files outside the storage folder | High | Look up files by ID, never by user-supplied path | F04 |
 | T12 | Information disclosure | Repository and image | Secret committed to Git or built into an image | High | Runtime secrets, secret scanning, revoke-then-purge procedure | F05 |
 | T13 | Information disclosure | Logs | Passwords, tokens or document contents written to logs | Medium | Structured logs with an allowed list of fields (`security_events.py`, tested) | |
-| T14 | Denial of service | Upload | Very large or repeated uploads fill storage | Medium | Upload size limit, per-user quota, resource limits | |
+| T14 | Denial of service | Upload | Very large or repeated uploads fill storage | Medium | Upload size limit and per-user quota (O3 fix), capped `/tmp`, resource limits | |
 | T15 | Denial of service | Search and login | Expensive requests exhaust the application | Low | Rate limits and CPU and memory limits | |
 | T16 | Elevation of privilege | Admin pages | Member reaches admin functions | High | Server-side role check on every admin route | |
 | T17 | Elevation of privilege | Container | Root or privileged container helps an attacker escape | High | Non-root, read-only root filesystem, dropped capabilities | F07 |

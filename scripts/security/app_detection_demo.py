@@ -17,6 +17,7 @@ Exit status 1 if any alert is missed.
 import argparse
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -29,9 +30,28 @@ from itsdangerous import URLSafeTimedSerializer
 
 ADMIN_USER_ID = 1
 
+# O1 fix: forms carry a CSRF token bound to a cookie. FormClient fetches the
+# login page once to get both, then adds the token to every form POST, as a
+# browser submitting the app's own forms does. Against the vulnerable
+# baseline, which has no token, it sends an empty field that the app ignores.
+TOKEN_FIELD = re.compile(r'name="csrf_token" value="([^"]*)"')
+
+
+class FormClient(httpx.Client):
+    def __init__(self, base_url: str) -> None:
+        super().__init__(base_url=base_url, timeout=30)
+        self.csrf_token: str | None = None
+
+    def post(self, url, *, data=None, **kwargs):
+        # Fetched on first use, so the client can still be used in a with block.
+        if self.csrf_token is None:
+            match = TOKEN_FIELD.search(self.get("/login").text)
+            self.csrf_token = match.group(1) if match else ""
+        return super().post(url, data={"csrf_token": self.csrf_token, **(data or {})}, **kwargs)
+
 
 def login(base_url: str, username: str, password: str) -> httpx.Client:
-    client = httpx.Client(base_url=base_url, timeout=30)
+    client = FormClient(base_url)
     response = client.post("/login", data={"username": username, "password": password})
     if response.status_code != 303:
         sys.exit(f"Could not sign in as {username}: HTTP {response.status_code}")
@@ -42,7 +62,7 @@ def trigger_all(base_url: str, password: str, run_id: str) -> None:
     # The demo user name is new on every run, so DV-A1 is not suppressed by
     # an alert from a previous run in the same window.
     probe_user = f"demo-{run_id}"
-    with httpx.Client(base_url=base_url, timeout=30) as client:
+    with FormClient(base_url) as client:
         for _ in range(5):
             client.post("/login", data={"username": probe_user, "password": "wrong"})
     print(f"DV-A1 triggered: 5 failed logins for the unknown user {probe_user}")
@@ -50,7 +70,7 @@ def trigger_all(base_url: str, password: str, run_id: str) -> None:
     forged = URLSafeTimedSerializer(f"made-up-key-{run_id}" * 2, salt="session").dumps(
         {"uid": ADMIN_USER_ID}
     )
-    with httpx.Client(base_url=base_url, timeout=30) as client:
+    with FormClient(base_url) as client:
         client.cookies.set("docvault_session", forged)
         client.get("/admin/users")
     print("DV-A2 triggered: admin session cookie signed with a made-up key")

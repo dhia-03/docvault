@@ -29,12 +29,16 @@ echo "==> Uploading a sample document as alice"
 cookie_jar="$(mktemp)"
 work_dir="$(mktemp -d)"
 trap 'rm -rf "$cookie_jar" "$work_dir"' EXIT
+# Forms need the CSRF cookie and the matching token from the login page.
+csrf_token="$(curl -fsS -c "$cookie_jar" "$TARGET/login" \
+  | sed -nE 's/.*name="csrf_token" value="([^"]*)".*/\1/p' | head -1)"
 # The password is read from standard input, so it never appears in the
 # process list.
-printf '%s' "$SEED_PASSWORD" | curl -fsS -o /dev/null -c "$cookie_jar" "$TARGET/login" \
+printf '%s' "$SEED_PASSWORD" | curl -fsS -o /dev/null -b "$cookie_jar" -c "$cookie_jar" \
+  "$TARGET/login" --data-urlencode "csrf_token=$csrf_token" \
   --data-urlencode "username=alice" --data-urlencode "password@-"
 printf 'Quarterly figures, test data only.\n' \
-  | curl -fsS -o /dev/null -b "$cookie_jar" "$TARGET/documents" \
+  | curl -fsS -o /dev/null -b "$cookie_jar" "$TARGET/documents" -F "csrf_token=$csrf_token" \
     -F "title=Quarterly report" -F "file=@-;filename=quarterly-report.txt"
 
 echo "==> ZAP: authenticated spider and active scan of $TARGET"

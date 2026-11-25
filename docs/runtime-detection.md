@@ -9,13 +9,13 @@ The app writes each security event as one JSON line on its standard output: fail
 | ID | Name | Fires when | Severity | Scenario |
 | --- | --- | --- | --- | --- |
 | DV-A1 | `brute_force_suspected` | 5 failed sign-ins for one username or one address within 60 s | Medium | Password guessing (T01, O2) |
-| DV-A2 | `forged_session` | A session cookie with a bad signature. An expired cookie is logged but is not an alert. | High | Forged sessions or a leaked signing key (F05) |
+| DV-A2 | `forged_session` | A session cookie with a bad signature. Expired, revoked or disabled-account sessions are logged as `invalid_session` with that reason, but are not alerts. | High | Forged sessions or a leaked signing key (F05) |
 | DV-A3 | `access_probing` | 3 refused or missing documents for one user within 60 s | Medium | Trying other users' documents by ID (F01) |
 | DV-A4 | `privilege_probe` | A user without the role opens an admin or audit page | Low | Looking for admin functions (T16) |
 
 Each alert fires at most once per minute for the same rule and source, so an attack gives one alert, not one per request.
 
-Only fields on an allowed list are logged, and text is cut to 100 characters. Passwords, cookies, tokens and document contents can never reach the logs (threat T13); a test checks this.
+Every event carries the request ID, which is also in the audit log and in the `X-Request-ID` response header, so the three can be matched. Only fields on an allowed list are logged, and text is cut to 100 characters. Passwords, cookies, tokens and document contents can never reach the logs (threat T13); a test checks this.
 
 Read the alerts with `kubectl -n docvault logs deploy/docvault -c app` or `docker compose logs app`.
 

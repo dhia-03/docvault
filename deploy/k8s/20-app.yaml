@@ -150,8 +150,11 @@ spec:
                 path: POSTGRES_PASSWORD
               - key: SEED_PASSWORD
                 path: SEED_PASSWORD
+        # Uploads over 1 MiB are buffered here before being saved; the cap keeps
+        # a flood of uploads from filling the node's disk (O3 fix).
         - name: tmp
-          emptyDir: {}
+          emptyDir:
+            sizeLimit: 64Mi
 ---
 apiVersion: v1
 kind: Service

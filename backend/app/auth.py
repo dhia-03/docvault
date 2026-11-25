@@ -46,7 +46,9 @@ def verify_password(password_hash: str, password: str) -> bool:
 
 
 def create_session(user: User) -> str:
-    return session_serializer().dumps({"uid": user.id})
+    # "sv" ties the cookie to the user's current session version: raising the
+    # version (revoke sessions, password change, disable) invalidates it.
+    return session_serializer().dumps({"uid": user.id, "sv": user.session_version})
 
 
 def current_user(request: Request, db: Session = Depends(get_db)) -> User:
@@ -60,11 +62,21 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
         # cookie was not made with our key: forged, or signed with a leaked
         # old key (alert DV-A2).
         security_events.invalid_session(
-            client_ip(request), request.url.path, expired=isinstance(exc, SignatureExpired)
+            client_ip(request),
+            request.url.path,
+            "expired" if isinstance(exc, SignatureExpired) else "bad_signature",
         )
         raise NotAuthenticated from exc
-    user = db.get(User, data["uid"])
+    user = db.get(User, data.get("uid"))
+    reason = None
     if user is None:
+        reason = "unknown_user"
+    elif user.disabled:
+        reason = "disabled"
+    elif data.get("sv", 0) != user.session_version:
+        reason = "revoked"
+    if reason:
+        security_events.invalid_session(client_ip(request), request.url.path, reason)
         raise NotAuthenticated
     # Lets the error handler in main.py name the user behind a refused request.
     request.state.user = user

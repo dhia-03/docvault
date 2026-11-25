@@ -14,8 +14,9 @@
         <a href="/documents">Documents</a>
         {% if user.role == "admin" %}<a href="/admin/users">Users</a>{% endif %}
         {% if user.role in ("admin", "auditor") %}<a href="/audit">Audit log</a>{% endif %}
+        <a href="/account">Account</a>
         <span class="who">{{ user.username }} ({{ user.role }})</span>
-        <form method="post" action="/logout"><button>Sign out</button></form>
+        <form method="post" action="/logout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Sign out</button></form>
       </nav>
       {% endif %}
     </header>

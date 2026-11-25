@@ -3,13 +3,15 @@
 {% block content %}
 <h1>Users</h1>
 <table>
-  <thead><tr><th>Username</th><th>Role</th></tr></thead>
+  <thead><tr><th>Username</th><th>Status</th><th>Role</th><th>Account actions</th></tr></thead>
   <tbody>
     {% for account in users %}
     <tr>
       <td>{{ account.username }}</td>
+      <td>{{ "disabled" if account.disabled else "active" }}</td>
       <td>
         <form class="row" method="post" action="/admin/users/{{ account.id }}/role">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <select name="role" aria-label="Role for {{ account.username }}">
             {% for role in roles %}
             <option value="{{ role }}" {% if role == account.role %}selected{% endif %}>{{ role }}</option>
@@ -18,6 +20,24 @@
           <button>Save</button>
         </form>
       </td>
+      <td>
+        <form class="row" method="post" action="/admin/users/{{ account.id }}/password">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input name="new_password" type="password" required minlength="12" autocomplete="new-password"
+                 aria-label="New password for {{ account.username }}" placeholder="New password">
+          <button>Reset password</button>
+        </form>
+        <form class="row" method="post" action="/admin/users/{{ account.id }}/revoke-sessions">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button>Sign out everywhere</button>
+        </form>
+        {% if account.id != user.id %}
+        <form class="row" method="post" action="/admin/users/{{ account.id }}/{{ "enable" if account.disabled else "disable" }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button>{{ "Enable" if account.disabled else "Disable" }}</button>
+        </form>
+        {% endif %}
+      </td>
     </tr>
     {% endfor %}
   </tbody>
@@ -25,8 +45,9 @@
 
 <h2>Create a user</h2>
 <form class="stack" method="post" action="/admin/users">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <label>Username <input name="username" required minlength="3" maxlength="64"></label>
-  <label>Password <input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+  <label>Password <input name="password" type="password" required minlength="12" autocomplete="new-password"></label>
   <label>Role
     <select name="role">
       {% for role in roles %}<option value="{{ role }}">{{ role }}</option>{% endfor %}
